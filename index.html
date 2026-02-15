@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CREACTIVITAT — Generador d'Activitats amb IA</title>
+  <meta name="description"
+    content="Dissenya i audita activitats d'aula que integren la Intel·ligència Artificial, seguint marcs pedagògics rigorosos." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <h1 class="logo">CREACTIVITAT</h1>
+        <p class="tagline">Activitats d'aula amb IA · Dissenyades amb rigor pedagògic</p>
+      </div>
+      <nav class="mode-tabs">
+        <button class="tab active" data-mode="generate">
+          <span class="tab-icon">🎯</span>
+          <span class="tab-label">Genera</span>
+        </button>
+        <button class="tab" data-mode="audit">
+          <span class="tab-icon">🔍</span>
+          <span class="tab-label">Audita</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="settings-btn" title="Configuració" style="margin-left: var(--sp-4);">
+          ⚙️
+        </button>
+      </nav>
+    </header>
+
+    <!-- API Key Banner -->
+    <div id="api-key-banner" class="api-banner">
+      <div class="api-banner-content">
+        <span class="api-banner-icon">🔑</span>
+        <p>Introdueix la teva clau API de Gemini per començar</p>
+        <div class="api-input-group">
+          <input type="password" id="api-key-input" placeholder="AIzaSy..." class="api-input" />
+          <button id="api-key-save" class="btn btn-primary btn-sm">Desa</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Generate Mode -->
+      <section id="generate-section" class="mode-section active">
+        <div id="wizard-container"></div>
+      </section>
+
+      <!-- Audit Mode -->
+      <section id="audit-section" class="mode-section">
+        <div id="auditor-container"></div>
+      </section>
+
+      <!-- Results -->
+      <section id="result-section" class="result-section hidden">
+        <div id="result-container"></div>
+      </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p class="loading-text">Generant proposta pedagògica...</p>
+        <p class="loading-sub">Consultant marcs teòrics i dissenyant l'activitat</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
