@@ -5,6 +5,8 @@ import { renderWizard } from './ui/wizard.js';
 import { renderAuditorForm } from './ui/auditor-form.js';
 import { renderResult } from './ui/result-view.js';
 import { renderSettingsModal } from './ui/settings.js';
+import { addToHistory } from './utils/history.js';
+import { renderHistoryView } from './ui/history-view.js';
 
 // --- State ---
 let currentMode = 'generate';
@@ -13,9 +15,11 @@ let currentMode = 'generate';
 const modeTabs = document.querySelectorAll('.tab');
 const generateSection = document.getElementById('generate-section');
 const auditSection = document.getElementById('audit-section');
+const historySection = document.getElementById('history-section');
 const resultSection = document.getElementById('result-section');
 const wizardContainer = document.getElementById('wizard-container');
 const auditorContainer = document.getElementById('auditor-container');
+const historyContainer = document.getElementById('history-container');
 const resultContainer = document.getElementById('result-container');
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.querySelector('.loading-text');
@@ -45,7 +49,8 @@ function setupAPIKey() {
         const key = apiInput.value.trim();
         if (key) {
             setApiKey(key);
-            apiBanner.classList.add('hidden');
+            alert('Clau API desada correctament! Recarregant...');
+            location.reload();
         }
     });
 
@@ -89,7 +94,15 @@ function switchMode(mode) {
 
     generateSection.classList.toggle('active', mode === 'generate');
     auditSection.classList.toggle('active', mode === 'audit');
+    historySection.classList.toggle('active', mode === 'history');
     resultSection.classList.add('hidden');
+
+    if (mode === 'history') {
+        renderHistoryView(historyContainer, (historyItem) => {
+            // View result from history
+            showResult(historyItem, false); // false = don't save again
+        });
+    }
 }
 
 // --- Handlers ---
@@ -140,18 +153,30 @@ function hideLoading() {
     loadingOverlay.classList.add('hidden');
 }
 
-function showResult(result) {
+function showResult(result, saveToHistory = true) {
     hideLoading();
+
+    // Auto-save to history if it's a new result
+    if (saveToHistory && !result.error) {
+        const savedItem = addToHistory(result);
+        if (savedItem) result.id = savedItem.id; // Assign ID
+    }
 
     // Hide input sections, show result
     generateSection.classList.remove('active');
     auditSection.classList.remove('active');
+    historySection.classList.remove('active');
     resultSection.classList.remove('hidden');
 
     renderResult(resultContainer, result, () => {
         // On back: show input again
         resultSection.classList.add('hidden');
-        switchMode(currentMode);
+        // If we came from history, go back to history. Else go back to current mode.
+        if (!saveToHistory) {
+            switchMode('history');
+        } else {
+            switchMode(currentMode);
+        }
     });
 }
 

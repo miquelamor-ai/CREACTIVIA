@@ -1,18 +1,18 @@
 // CREACTIVITAT — Knowledge Loader
 // Loads and selects relevant .md knowledge files for prompt context
 
-const KNOWLEDGE_FILES = [
-    { id: 'friccio', file: 'friccio-cognitiva.md', tags: ['audit'] },
-    { id: 'disseny', file: 'disseny-instruccional.md', tags: ['generate'] },
-    { id: 'rols', file: 'rols-interaccio-ia.md', tags: ['generate'] },
-    { id: 'mihia', file: 'model-4d-mihia.md', tags: ['generate', 'audit'] },
-    { id: 'etic', file: 'marc-etic-institucional.md', tags: ['audit'] },
-    { id: 'marc', file: 'marc-general-ia.md', tags: ['context'] }, // Optional
-    { id: 'ignasi', file: 'pedagogia-ignasiana.md', tags: ['context'] }, // Optional
-    { id: 'inclusio', file: 'inclusio-necessitats.md', tags: ['context'] },
-    { id: 'curriculum', file: 'curriculum-competencies.md', tags: ['context'] },
-    { id: 'competencia', file: 'competencia-digital-ia.md', tags: ['context'] },
-];
+const KNOWLEDGE_FILES = {
+    friccio: 'friccio-cognitiva.md',
+    disseny: 'disseny-instruccional.md',
+    rols: 'rols-interaccio-ia.md',
+    mihia: 'model-4d-mihia.md',
+    etic: 'marc-etic-institucional.md',
+    marc: 'marc-general-ia.md',
+    ignasi: 'pedagogia-ignasiana.md',
+    inclusio: 'inclusio-necessitats.md',
+    curriculum: 'curriculum-competencies.md',
+    competencia: 'competencia-digital-ia.md'
+};
 
 // Cache for loaded files
 const cache = {};
@@ -32,43 +32,17 @@ async function loadFile(filename) {
 }
 
 /**
- * Get relevant knowledge context for a given mode.
- * OPTIMIZED: Loads strictly the minimum necessary files to save tokens.
+ * Load specific knowledge files by ID.
+ * Optimized for "High Precision" loading in the Quality Chain.
+ * @param {string[]} fileIds - Array of file IDs to load (e.g. ['disseny', 'mihia'])
  */
-export async function getKnowledgeContext(mode, options = {}) {
-    let filesToLoad = [];
+export async function loadSpecificKnowledge(fileIds) {
+    const promises = fileIds.map(id => {
+        const filename = KNOWLEDGE_FILES[id];
+        if (!filename) return Promise.resolve('');
+        return loadFile(filename).then(content => `--- KNOWLEDGE: ${filename} ---\n${content}\n`);
+    });
 
-    if (mode === 'generate') {
-        // Core files for generation (minimal set)
-        filesToLoad = [
-            'disseny-instruccional.md', // Essential for structure
-            'model-4d-mihia.md',        // Essential for AI levels
-            'rols-interaccio-ia.md'     // Essential for roles
-        ];
-
-        // Add optional context if requested or if we want more detail (but risky for quota)
-        // filesToLoad.push('marc-general-ia.md'); 
-    } else if (mode === 'audit') {
-        // Core files for auditing
-        filesToLoad = [
-            'friccio-cognitiva.md',     // Essential for friction
-            'model-4d-mihia.md',        // Essential for analysis
-            'marc-etic-institucional.md' // Essential for ethics
-        ];
-    }
-
-    const promises = filesToLoad.map(f => loadFile(f));
     const contents = await Promise.all(promises);
-
-    return filesToLoad.map((f, i) => {
-        if (!contents[i]) return '';
-        return `--- KNOWLEDGE: ${f} ---\n${contents[i]}\n`;
-    }).filter(Boolean).join('\n');
-}
-
-/**
- * Fallback for summarized context if needed.
- */
-export async function getCompactContext(mode) {
-    return getKnowledgeContext(mode); // Now the default is already compact
+    return contents.filter(Boolean).join('\n');
 }

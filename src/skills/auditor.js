@@ -1,6 +1,6 @@
 // CREACTIVITAT — Skill: Auditor Cognitiu
 import { callGemini } from '../api/gemini.js';
-import { getKnowledgeContext } from '../knowledge/loader.js';
+import { loadSpecificKnowledge } from '../knowledge/loader.js';
 
 /**
  * Audit an existing activity for pedagogical quality.
@@ -8,7 +8,8 @@ import { getKnowledgeContext } from '../knowledge/loader.js';
  * @returns {Promise<object>} - Audit results with semaphore, risks, improvements
  */
 export async function auditActivity(params) {
-  const knowledge = await getKnowledgeContext('audit');
+  // Load specific knowledge for auditing
+  const knowledge = await loadSpecificKnowledge(['friccio', 'etic', 'mihia']);
 
   const prompt = buildAuditPrompt(params, knowledge);
   const result = await callGemini(prompt, { temperature: 0.4 });

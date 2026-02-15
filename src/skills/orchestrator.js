@@ -1,5 +1,5 @@
-// CREACTIVITAT — Orchestrator
-import { generateActivity } from './generator.js';
+// CREACTIVITAT — Skill: Orchestrator (Quality Chain Architecture)
+import { generateSkeleton, enrichWithPedagogy, finalizeActivity } from './generator.js';
 import { auditActivity } from './auditor.js';
 
 /**
@@ -10,7 +10,7 @@ import { auditActivity } from './auditor.js';
  */
 export async function orchestrate(mode, params) {
     if (mode === 'generate') {
-        return await runGeneration(params);
+        return await runQualityChain(params);
     } else if (mode === 'audit') {
         return await runAudit(params);
     }
@@ -18,65 +18,49 @@ export async function orchestrate(mode, params) {
 }
 
 /**
- * Generate an activity and then auto-audit it.
+ * Execute the Quality Chain Generation Process.
+ * Step 1: Skeleton (Structure)
+ * Step 2: Enrichment (Pedagogical Depth)
+ * Step 3: Polish (Final Format)
  */
-async function runGeneration(params) {
-    // Step 1: Generate the activity
-    const activity = await generateActivity(params);
-
-    if (activity.error) {
-        return { mode: 'generate', activity, audit: null, error: true };
-    }
-
-    // Step 2: Auto-audit the generated activity
-    let audit = null;
+async function runQualityChain(params) {
     try {
-        const activityText = formatActivityForAudit(activity);
-        audit = await auditActivity({
-            activityText,
-            stage: params.stage,
-            subject: params.subject,
-        });
-    } catch (e) {
-        console.warn('Auto-audit failed, returning activity without audit:', e);
-    }
+        // 1. GENERATE SKELETON
+        // Focus: Format, basic content, didactic sequence.
+        // Context: Instructional Design only.
+        console.log('🔗 Step 1: Skeleton Generation...');
+        let draft = await generateSkeleton(params);
+        if (draft.error) throw new Error(draft.error);
 
-    return { mode: 'generate', activity, audit };
+        // DELAY: Respect Free Rate Limit (15 RPM = 1 req / 4s)
+        console.log('⏳ Waiting 4s for API rate limit safety...');
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        // 2. PEDAGOGICAL ENRICHMENT (The "Quality" step)
+        // Focus: Injecting 4D, MIHIA, and Roles deep knowledge.
+        // Context: 4D Model + AI Roles.
+        console.log('🔗 Step 2: Pedagogical Enrichment...');
+        let enriched = await enrichWithPedagogy(draft, params);
+
+        // 3. FINAL POLISH (The "Reliability" step)
+        // Focus: JSON structure, ensuring everything is complete.
+        console.log('🔗 Step 3: Final Polish...');
+        const finalActivity = await finalizeActivity(enriched);
+
+        return { mode: 'generate', activity: finalActivity, audit: null };
+
+    } catch (error) {
+        console.error('Quality Chain Failed:', error);
+        return {
+            mode: 'generate',
+            activity: null,
+            audit: null,
+            error: `Error en la cadena de generació: ${error.message}`
+        };
+    }
 }
 
-/**
- * Audit an existing activity.
- */
 async function runAudit(params) {
     const audit = await auditActivity(params);
     return { mode: 'audit', activity: null, audit };
-}
-
-/**
- * Convert a structured activity to text for the auditor to analyze.
- */
-function formatActivityForAudit(activity) {
-    const parts = [
-        `Títol: ${activity.titol || 'Sense títol'}`,
-        `Resum: ${activity.resum || ''}`,
-        `Granularitat: ${activity.granularitat || 'activitat'}`,
-        `Durada: ${activity.durada || '1 sessió'}`,
-        `Etapa: ${activity.etapa || ''}`,
-        `Matèria: ${activity.materia || ''}`,
-        `Objectiu: ${activity.objectiu || ''}`,
-        '',
-        'Seqüència didàctica:',
-    ];
-
-    if (activity.sequencia && Array.isArray(activity.sequencia)) {
-        activity.sequencia.forEach((fase, i) => {
-            parts.push(`\nFase ${i + 1}: ${fase.fase || ''} (${fase.durada || ''})`);
-            parts.push(`  Descripció: ${fase.descripcio || ''}`);
-            parts.push(`  Usa IA: ${fase.usaIA ? 'Sí' : 'No'}`);
-            if (fase.instruccions_alumne) parts.push(`  Instruccions alumne: ${fase.instruccions_alumne}`);
-            if (fase.prompt_alumne) parts.push(`  Prompt alumne: ${fase.prompt_alumne}`);
-        });
-    }
-
-    return parts.join('\n');
 }

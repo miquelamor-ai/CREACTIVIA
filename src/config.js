@@ -1,6 +1,6 @@
 // CREACTIVITAT — Configuration
 
-const DEFAULT_MODEL = 'gemini-1.5-flash';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 export const CONFIG = {
   MODEL: localStorage.getItem('creactivitat_model') || DEFAULT_MODEL,
@@ -13,12 +13,9 @@ export const CONFIG = {
 
 // Available models for the settings dropdown
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Recomanat)' },
-  { id: 'gemini-1.5-flash-001', name: 'Gemini 1.5 Flash (v001)' },
-  { id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash (Latest)' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Potent)' },
-  { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro (Latest)' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Experimental)' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Estable · Recomanat)' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Legacy · Fins Març 2026)' },
+  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview · Experimental)' },
 ];
 
 export function getApiKey() {
@@ -30,7 +27,10 @@ export function setApiKey(key) {
 }
 
 export function getModel() {
-  return localStorage.getItem(CONFIG.STORAGE_KEY_MODEL) || DEFAULT_MODEL;
+  const stored = localStorage.getItem(CONFIG.STORAGE_KEY_MODEL);
+  // Validate if stored model still exists in available models
+  const exists = AVAILABLE_MODELS.find(m => m.id === stored);
+  return exists ? stored : DEFAULT_MODEL;
 }
 
 export function setModel(modelId) {
