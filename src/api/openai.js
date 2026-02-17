@@ -2,24 +2,20 @@
 import { CONFIG, getApiKey } from '../config.js';
 
 let lastCallTime = 0;
-const MIN_DELAY = 3000; // 3s entre crides
+const MIN_DELAY = 3000;
 
 export async function callOpenAI(prompt, options = {}) {
-  const now = Date.now();
-  const wait = MIN_DELAY - (now - lastCallTime);
-  if (wait > 0) {
-    console.log(`[OpenRouter] Esperant ${wait}ms per rate limit...`);
-    await new Promise(r => setTimeout(r, wait));
-  }
+  const wait = MIN_DELAY - (Date.now() - lastCallTime);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
   lastCallTime = Date.now();
 
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('Cal configurar la clau API d\'OpenRouter a la barra lateral');
+  if (!apiKey) throw new Error('Cal configurar la clau API d\'OpenRouter a la barra lateral esquerra');
 
   const baseUrl = CONFIG.BASE_URL || 'https://openrouter.ai/api/v1';
   const model = options.model || CONFIG.MODEL;
 
-  console.log(`[OpenRouter] Cridant model: ${model} via ${baseUrl}`);
+  console.log(`[OpenRouter] Model: ${model}`);
 
   const body = {
     model,
@@ -30,8 +26,9 @@ export async function callOpenAI(prompt, options = {}) {
 
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let response;
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,50 +38,47 @@ export async function callOpenAI(prompt, options = {}) {
         },
         body: JSON.stringify(body),
       });
-
-      if (response.status === 429 || response.status >= 500) {
-        if (attempt >= maxAttempts) {
-          const errBody = await response.json().catch(() => ({}));
-          throw new Error(`Error ${response.status}: ${errBody?.error?.message || 'Servidor saturat. Prova un altre model.'}`);
-        }
-        const delay = 10000 * attempt;
-        console.warn(`[OpenRouter] ${response.status} - Esperant ${delay}ms (intent ${attempt})...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(`Error OpenRouter (${response.status}): ${errBody?.error?.message || 'Error desconegut'}`);
-      }
-
-      const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (!content) throw new Error('Resposta buida d\'OpenRouter');
-
-      console.log(`[OpenRouter] Resposta rebuda (${content.length} chars)`);
-      return parseResponse(content);
-
-    } catch (error) {
-      if (attempt >= maxAttempts) throw error;
-      if (!error.message.includes('429') && !error.message.includes('500')) throw error;
-      await new Promise(r => setTimeout(r, 8000));
+    } catch (networkErr) {
+      throw new Error(`Error de xarxa: ${networkErr.message}`);
     }
+
+    // Error 401/403: clau invàlida
+    if (response.status === 401 || response.status === 403) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Clau OpenRouter invàlida o caducada (${response.status}). Ves a openrouter.ai/keys i crea una nova clau.`);
+    }
+
+    // Error 502: problema d'autenticació (Clerk) — normalment és la clau invàlida
+    if (response.status === 502) {
+      throw new Error(`Error 502 d'OpenRouter: La clau API és invàlida o ha caducat. Ves a openrouter.ai/keys, crea una nova clau i enganxa-la a la barra lateral.`);
+    }
+
+    if (response.status === 429 || response.status >= 500) {
+      if (attempt >= maxAttempts) throw new Error(`Error ${response.status}: Servidor saturat. Prova un altre model.`);
+      console.warn(`[OpenRouter] ${response.status} - Reintentant en ${10 * attempt}s...`);
+      await new Promise(r => setTimeout(r, 10000 * attempt));
+      continue;
+    }
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Error OpenRouter (${response.status}): ${err?.error?.message || 'Error desconegut'}`);
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error('OpenRouter no ha retornat contingut. Prova un altre model.');
+
+    console.log(`[OpenRouter] OK (${content.length} chars)`);
+    return parseJSON(content);
   }
 }
 
-function parseResponse(text) {
-  try { return JSON.parse(text); } catch { /* no JSON pur */ }
-
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    try { return JSON.parse(jsonMatch[1]); } catch { /* bloc malformat */ }
-  }
-
-  const objectMatch = text.match(/(\{[\s\S]*\})/);
-  if (objectMatch) {
-    try { return JSON.parse(objectMatch[1]); } catch { /* tampoc */ }
-  }
-
+function parseJSON(text) {
+  try { return JSON.parse(text); } catch { }
+  const block = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (block) try { return JSON.parse(block[1]); } catch { }
+  const obj = text.match(/\{[\s\S]*\}/);
+  if (obj) try { return JSON.parse(obj[0]); } catch { }
   return { rawText: text };
 }
