@@ -1,171 +1,269 @@
-// CREACTIVITAT — Unified Generator Form UI
+// CREACTIVITAT — Generator Form (One-screen, compact)
 
 const STAGES = [
-  { value: 'primaria_cs', label: 'Primària CS (10-12)' },
-  { value: 'eso1', label: 'ESO 1r cicle (12-14)' },
-  { value: 'eso2', label: 'ESO 2n cicle (14-16)' },
-  { value: 'batxillerat', label: 'Batxillerat (16-18)' },
-  { value: 'fp', label: 'FP' },
+  { value: 'primaria_cs', label: 'Primària CS', sub: '10-12' },
+  { value: 'eso1', label: 'ESO 1r cicle', sub: '12-14' },
+  { value: 'eso2', label: 'ESO 2n cicle', sub: '14-16' },
+  { value: 'batxillerat', label: 'Batxillerat', sub: '16-18' },
+  { value: 'fp', label: 'FP', sub: 'Prof.' },
 ];
 
 const GRANULARITIES = [
-  { value: 'exercici', icon: 'file-text', label: 'Exercici', desc: '5-20 min' },
-  { value: 'activitat', icon: 'clipboard-list', label: 'Activitat', desc: '1 sessió' },
-  { value: 'tasca', icon: 'book', label: 'Tasca', desc: '2-5 sessions' },
-  { value: 'projecte', icon: 'rocket', label: 'Projecte', desc: '1-4 setmanes' },
+  { value: 'exercici', icon: 'file-text', label: 'Exercici', sub: '5-20 min' },
+  { value: 'activitat', icon: 'clipboard-list', label: 'Activitat', sub: '1 sessió' },
+  { value: 'tasca', icon: 'book', label: 'Tasca', sub: '2-5 sessions' },
+  { value: 'projecte', icon: 'rocket', label: 'Projecte', sub: '1-4 set.' },
 ];
 
 const MIHIA_LEVELS = [
-  { value: '', label: 'Automàtic' },
-  { value: '0', label: 'N0 — No delegació' },
-  { value: '1', label: 'N1 — Exploració' },
-  { value: '2', label: 'N2 — Suport' },
-  { value: '3', label: 'N3 — Cocreació' },
-  { value: '4', label: 'N4 — Delegació' },
-  { value: '5', label: 'N5 — Autònoma' },
+  { value: '', label: 'Auto' },
+  { value: '1', label: 'N1 · Explora' },
+  { value: '2', label: 'N2 · Revisa' },
+  { value: '3', label: 'N3 · Cocrea' },
+  { value: '4', label: 'N4 · Delega' },
 ];
 
 const ROLES = [
-  { value: '', label: 'Automàtic' },
-  { value: 'mentor_socratic', label: '🧠 Mentor Socràtic' },
-  { value: 'critic_editor', label: '✍️ Crític / Editor' },
-  { value: 'generador_casos', label: '🧪 Generador Casos' },
-  { value: 'simulador', label: '🎭 Simulador' },
-  { value: 'contrincant', label: '⚔️ Contrincant' },
-  { value: 'traductor', label: '🔄 Traductor' },
-  { value: 'teachable_agent', label: '🎓 Teachable Agent' },
+  { value: '', label: 'Auto' },
+  { value: 'mentor_socratic', label: '🧠 Mentor' },
+  { value: 'critic_editor', label: '✍️ Crític' },
+  { value: 'generador_casos', label: '🧪 Casos' },
+  { value: 'simulador', label: '🎭 Sim.' },
+  { value: 'contrincant', label: '⚔️ Debat' },
+  { value: 'teachable_agent', label: '🎓 Agent' },
 ];
 
-let formData = {
-  granularity: 'activitat',
-  duration: '1 sessió',
-  stage: '',
-  subject: '',
-  topic: '',
-  objective: '',
-  mihiaPreferred: '',
-  rolePreferred: '',
+const DRAFT_KEY = 'creactivitat_draft_v2';
+
+function loadDraft() {
+  try {
+    const d = localStorage.getItem(DRAFT_KEY);
+    if (!d) return null;
+    const { data, ts } = JSON.parse(d);
+    if (Date.now() - ts > 24 * 3600 * 1000) { localStorage.removeItem(DRAFT_KEY); return null; }
+    return data;
+  } catch { return null; }
+}
+
+function saveDraft(data) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, ts: Date.now() })); } catch { }
+}
+
+let formData = loadDraft() || {
+  granularity: 'activitat', stage: '', subject: '', topic: '',
+  objective: '', duration: '1 sessió', mihiaPreferred: '', rolePreferred: '',
 };
 
 export function renderGeneratorForm(container, onSubmit) {
-  function render() {
-    container.innerHTML = `
-      <div class="unified-form">
-        <div class="form-header">
-          <h2 class="form-title">Proposta Pedagògica</h2>
-          <p class="form-subtitle">Dissenya la teva activitat amb el rigor del Studio Creactivitat.</p>
+  container.innerHTML = `
+    <div class="gen-form">
+      <div class="gen-form-header">
+        <h2 class="gen-form-title">
+          <i data-lucide="sparkles"></i>
+          Nova Proposta Pedagògica
+        </h2>
+        <p class="gen-form-subtitle">Dissenya una activitat amb IA auditada automàticament</p>
+      </div>
+
+      <div class="gen-form-body">
+
+        <!-- Granularitat -->
+        <div class="form-group">
+          <label class="form-label">Tipus de proposta</label>
+          <div class="chip-grid">
+            ${GRANULARITIES.map(g => `
+              <button type="button" class="chip ${formData.granularity === g.value ? 'chip-active' : ''}"
+                data-field="granularity" data-value="${g.value}">
+                <i data-lucide="${g.icon}" class="chip-icon"></i>
+                <span class="chip-label">${g.label}</span>
+                <span class="chip-sub">${g.sub}</span>
+              </button>
+            `).join('')}
+          </div>
         </div>
 
-        <div class="form-grid-compact">
-          <!-- Section 1: Context & Type -->
-          <div class="form-section">
-            <h3 class="section-title"><i data-lucide="package"></i> Tipus i Context</h3>
-            
-            <div class="form-group">
-              <label class="form-label">Granularitat</label>
-              <div class="options-grid">
-                ${GRANULARITIES.map(g => `
-                  <div class="option-chip ${formData.granularity === g.value ? 'selected' : ''}" data-field="granularity" data-value="${g.value}">
-                    <i data-lucide="${g.icon}"></i>
-                    <span class="chip-label">${g.label}</span>
-                  </div>
-                `).join('')}
+        <!-- Etapa + Matèria + Durada inline -->
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label req" for="f-stage">Etapa</label>
+            <select id="f-stage" class="form-select">
+              <option value="">Tria...</option>
+              ${STAGES.map(s => `
+                <option value="${s.value}" ${formData.stage === s.value ? 'selected' : ''}>
+                  ${s.label} (${s.sub})
+                </option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label req" for="f-subject">Matèria</label>
+            <input type="text" id="f-subject" class="form-input" 
+              value="${esc(formData.subject)}" placeholder="Matemàtiques..." />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-duration">Durada</label>
+            <input type="text" id="f-duration" class="form-input" 
+              value="${esc(formData.duration)}" placeholder="1 sessió" />
+          </div>
+        </div>
+
+        <!-- Tema -->
+        <div class="form-group">
+          <label class="form-label req" for="f-topic">Tema o contingut</label>
+          <input type="text" id="f-topic" class="form-input" 
+            value="${esc(formData.topic)}" placeholder="Ex: Equacions de 1r grau, la fotosíntesi, la Revolució Francesa..." />
+        </div>
+
+        <!-- Objectiu -->
+        <div class="form-group">
+          <label class="form-label req" for="f-objective">
+            Objectiu d'aprenentatge
+            <span class="form-label-hint">Sigues concret/a</span>
+          </label>
+          <textarea id="f-objective" class="form-textarea" rows="3"
+            placeholder="Què ha d'aprendre o ser capaç de fer l'alumne al final d'aquesta activitat?">${esc(formData.objective)}</textarea>
+        </div>
+
+        <!-- IA Config (col·lapsible) -->
+        <details class="ia-config" ${formData.mihiaPreferred || formData.rolePreferred ? 'open' : ''}>
+          <summary class="ia-config-summary">
+            <i data-lucide="bot"></i>
+            Configuració IA avançada
+            <span class="ia-config-hint">Opcional · el sistema tria automàticament</span>
+          </summary>
+          <div class="ia-config-body">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Nivell MIHIA</label>
+                <div class="pill-group">
+                  ${MIHIA_LEVELS.map(m => `
+                    <button type="button" class="pill ${formData.mihiaPreferred === m.value ? 'pill-active' : ''}"
+                      data-field="mihiaPreferred" data-value="${m.value}">${m.label}</button>
+                  `).join('')}
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Rol de la IA</label>
+                <div class="pill-group">
+                  ${ROLES.map(r => `
+                    <button type="button" class="pill ${formData.rolePreferred === r.value ? 'pill-active' : ''}"
+                      data-field="rolePreferred" data-value="${r.value}">${r.label}</button>
+                  `).join('')}
+                </div>
               </div>
             </div>
-
-            <div class="form-group">
-              <label class="form-label" for="stage">Etapa</label>
-              <select id="stage" class="form-select">
-                <option value="">Selecciona etapa...</option>
-                ${STAGES.map(s => `<option value="${s.value}" ${formData.stage === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="duration">Durada</label>
-              <input type="text" id="duration" class="form-input" value="${formData.duration}" placeholder="Ex: 1 sessió" />
-            </div>
           </div>
+        </details>
 
-          <!-- Section 2: Topic & Objective -->
-          <div class="form-section">
-            <h3 class="section-title"><i data-lucide="book-open"></i> Contingut</h3>
-            
-            <div class="form-group">
-              <label class="form-label" for="subject">Matèria</label>
-              <input type="text" id="subject" class="form-input" value="${formData.subject}" placeholder="Ex: Matemàtiques..." />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="topic">Tema</label>
-              <input type="text" id="topic" class="form-input" value="${formData.topic}" placeholder="Ex: La fotosíntesi..." />
-            </div>
-
-            <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
-              <label class="form-label" for="objective">Objectiu d'aprenentatge</label>
-              <textarea id="objective" class="form-textarea" style="flex: 1; min-height: 120px;" placeholder="Què ha d'aprendre l'alumne?">${formData.objective}</textarea>
-            </div>
+        <!-- Submit -->
+        <div class="gen-form-footer">
+          <div class="gen-form-info">
+            <i data-lucide="info"></i>
+            <span>2 crides al model · Activitat + Auditoria pedagògica</span>
           </div>
-
-          <!-- Section 3: IA Configuration -->
-          <div class="form-section">
-            <h3 class="section-title"><i data-lucide="bot"></i> IA Config</h3>
-            <div class="form-group">
-              <label class="form-label" for="mihia">Nivell MIHIA</label>
-              <select id="mihia" class="form-select">
-                ${MIHIA_LEVELS.map(m => `<option value="${m.value}" ${formData.mihiaPreferred === m.value ? 'selected' : ''}>${m.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="role">Rol IA</label>
-              <select id="role" class="form-select">
-                ${ROLES.map(r => `<option value="${r.value}" ${formData.rolePreferred === r.value ? 'selected' : ''}>${r.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-group" style="margin-top: auto; padding: var(--sp-4); background: var(--c-primary-light); border-radius: var(--r-md); border: 1px solid var(--c-primary);">
-              <p style="font-size: 11px; color: var(--c-primary); line-height: 1.4; font-weight: 600;">
-                <i data-lucide="info" style="width: 12px; height: 12px; vertical-align: middle;"></i>
-                El motor seleccionarà el nivell i rol més adient segons l'objectiu si els deixes en automàtic.
-              </p>
-            </div>
+          <div class="gen-form-actions">
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-draft">
+              <i data-lucide="rotate-ccw"></i> Reinicia
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" id="btn-generate">
+              <i data-lucide="sparkles"></i>
+              Genera proposta
+            </button>
           </div>
         </div>
 
-        <div style="text-align: center; margin-top: var(--sp-6);">
-          <button class="btn btn-primary btn-lg" id="form-submit" style="min-width: 320px;">
-            <i data-lucide="sparkles"></i>
-            Genera Proposta Pedagògica
-          </button>
-        </div>
       </div>
-    `;
-    attachEvents(container, onSubmit);
-    if (window.lucide) window.lucide.createIcons();
-  }
+    </div>
+  `;
 
-  render();
+  if (window.lucide) window.lucide.createIcons();
+  attachFormEvents(container, onSubmit);
 }
 
-function attachEvents(container, onSubmit) {
-  // Option chips
-  container.querySelectorAll('.option-chip').forEach(chip => {
+function attachFormEvents(container, onSubmit) {
+  // Chips (granularitat)
+  container.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
+      chip.classList.add('chip-active');
       formData.granularity = chip.dataset.value;
-      renderGeneratorForm(container, onSubmit);
+      saveDraft(formData);
     });
   });
 
-  // Submit
-  container.querySelector('#form-submit').addEventListener('click', () => {
-    // Sync fields
-    formData.stage = container.querySelector('#stage').value;
-    formData.duration = container.querySelector('#duration').value;
-    formData.subject = container.querySelector('#subject').value;
-    formData.topic = container.querySelector('#topic').value;
-    formData.objective = container.querySelector('#objective').value;
-    formData.mihiaPreferred = container.querySelector('#mihia').value;
-    formData.rolePreferred = container.querySelector('#role').value;
-
-    onSubmit(formData);
+  // Pills (MIHIA i roles)
+  container.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const field = pill.dataset.field;
+      pill.closest('.pill-group').querySelectorAll('.pill').forEach(p => p.classList.remove('pill-active'));
+      pill.classList.add('pill-active');
+      formData[field] = pill.dataset.value;
+      saveDraft(formData);
+    });
   });
+
+  // Auto-save en escriure
+  ['f-stage', 'f-subject', 'f-duration', 'f-topic', 'f-objective'].forEach(id => {
+    const el = container.querySelector(`#${id}`);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      syncFields(container);
+      saveDraft(formData);
+    });
+  });
+
+  // Reinicia
+  container.querySelector('#btn-clear-draft')?.addEventListener('click', () => {
+    if (!confirm('Vols reiniciar el formulari?')) return;
+    formData = { granularity: 'activitat', stage: '', subject: '', topic: '', objective: '', duration: '1 sessió', mihiaPreferred: '', rolePreferred: '' };
+    localStorage.removeItem(DRAFT_KEY);
+    renderGeneratorForm(container, onSubmit);
+  });
+
+  // Genera
+  container.querySelector('#btn-generate')?.addEventListener('click', () => {
+    syncFields(container);
+
+    const missing = [];
+    if (!formData.stage) missing.push('Etapa');
+    if (!formData.subject) missing.push('Matèria');
+    if (!formData.topic) missing.push('Tema');
+    if (!formData.objective) missing.push('Objectiu');
+
+    if (missing.length) {
+      showFormError(container, `Cal omplir: ${missing.join(', ')}`);
+      return;
+    }
+
+    clearFormError(container);
+    onSubmit({ ...formData });
+  });
+}
+
+function syncFields(container) {
+  formData.stage = container.querySelector('#f-stage')?.value || '';
+  formData.subject = container.querySelector('#f-subject')?.value || '';
+  formData.duration = container.querySelector('#f-duration')?.value || '';
+  formData.topic = container.querySelector('#f-topic')?.value || '';
+  formData.objective = container.querySelector('#f-objective')?.value || '';
+}
+
+function showFormError(container, msg) {
+  let err = container.querySelector('.form-error-banner');
+  if (!err) {
+    err = document.createElement('div');
+    err.className = 'form-error-banner';
+    container.querySelector('.gen-form-footer').prepend(err);
+  }
+  err.innerHTML = `<i data-lucide="alert-triangle"></i> ${msg}`;
+  if (window.lucide) window.lucide.createIcons();
+  err.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearFormError(container) {
+  container.querySelector('.form-error-banner')?.remove();
+}
+
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

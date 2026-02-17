@@ -1,151 +1,211 @@
-// CREACTIVITAT — Skill: Generator (Quality Chain)
+// CREACTIVITAT — Generator (Optimitzat: 2 crides en lloc de 3)
 import { callLLM } from '../api/llm-provider.js';
 import { loadSpecificKnowledge } from '../knowledge/loader.js';
 
-// --- STEP 1: SKELETON ---
-export async function generateSkeleton(params) {
-  const knowledge = await loadSpecificKnowledge(['disseny']); // Only Design framework
+// ─── STEP 1: GENERA L'ACTIVITAT COMPLETA ───────────────────────────────────
+export async function generateActivity(params) {
+  const knowledge = await loadSpecificKnowledge(['disseny', 'mihia', 'rols']);
 
-  const prompt = `
-  Ets CREACTIVITAT, expert en disseny instruccional.
-  Genera l'ESQUELET d'una proposta didàctica.
-  
-  CONTEXT:
-  ${knowledge}
-  
-  PETICIÓ:
-  - Tipus: ${params.granularity}
-  - Etapa: ${params.stage}, Matèria: ${params.subject}, Tema: ${params.topic}
-  - Objectiu: ${params.objective}
-  - Durada: ${params.duration}
+  const prompt = `Ets CREACTIVITAT, expert en disseny pedagògic d'activitats amb IA.
 
-  TASCA:
-  Crea l'estructura JSON amb títol, resum, objectiu i la seqüència didàctica (fases).
-  
-  PER A CADA FASE, utilitza aquests MARCS per definir les columnes:
-  1. DOCENT (Rols d'acció): Modelatge, Orquestració, Feedback, Validació, Monitorització.
-  2. ALUMNE (Taxonomia de Bloom): Exploració, Planificació, Creació, Avaluació Crítica, Reflexió.
-  3. IA (Rols de Mollick): Mentor, Tutor, Coach, Companys, Simulador, Alumne, Eina.
-  
-  REGLA DE FORMAT:
-  - Descriu les accions de cada rol com una llista de punts començant per "-".
-  - Sigues concret i accionable.
+=== MARCS DE REFERÈNCIA ===
+${knowledge}
 
-  FORMAT JSON:
-  { 
-    "titol": "...", 
-    "resum": "...", 
-    "etapa": "${params.stage}",
-    "materia": "${params.subject}",
-    "tema": "${params.topic}",
-    "objectiu": "...", 
-    "sequencia": [
-      { 
-        "fase": "...", 
-        "durada": "...", 
-        "docent": "- Acctio 1\\n- Accio 2", 
-        "alumne": "- Accio 1\\n- Accio 2", 
-        "ia": "- Rol: [Nom]\\n- Accio 1", 
-        "referencia": "...",
-        "proto": { "doc": 0-100, "alu": 0-100, "ia": 0-100 }
-      }
-    ] 
-  }
-  `;
+=== PETICIÓ ===
+Tipus: ${params.granularity || 'activitat'}
+Etapa: ${params.stage || 'ESO'}
+Matèria: ${params.subject}
+Tema: ${params.topic}
+Objectiu: ${params.objective}
+Durada: ${params.duration || '1 sessió'}
+MIHIA preferit: ${params.mihiaPreferred || 'Automàtic (tria el millor)'}
+Rol IA preferit: ${params.rolePreferred || 'Automàtic (tria el millor)'}
+
+=== TASCA ===
+Crea una activitat didàctica completa que integri la IA de forma pedagògicament rigorosa.
+
+Per a cada fase de la seqüència, descriu:
+- "docent": Accions del docent com llista de punts (comença cada punt amb "- ")
+- "alumne": Accions de l'alumne com llista de punts
+- "ia": Rol i accions de la IA com llista de punts. Si no s'usa IA, escriu "- Sense IA en aquesta fase"
+- "referencia": Justificació pedagògica de la fase (1-2 frases referenciades als marcs)
+- "usaIA": true/false
+- "proto": nivells de protagonisme 0-100 {"doc": X, "alu": Y, "ia": Z}
+
+=== FORMAT DE RESPOSTA (JSON estricte, sense cap text fora del JSON) ===
+{
+  "titol": "Títol breu i atractiu",
+  "resum": "Descripció de 2-3 frases de l'activitat",
+  "etapa": "${params.stage}",
+  "materia": "${params.subject}",
+  "tema": "${params.topic}",
+  "objectiu": "L'objectiu d'aprenentatge reformulat",
+  "granularitat": "${params.granularity || 'activitat'}",
+  "durada": "${params.duration || '1 sessió'}",
+  "mihia": {
+    "nivell": 2,
+    "nom": "Nom del nivell",
+    "justificacio": "Per què aquest nivell és adequat"
+  },
+  "rolIA": {
+    "principal": "Nom del rol principal",
+    "descripcio": "Com actua la IA en aquesta activitat",
+    "justificacio": "Per què aquest rol és el més adient"
+  },
+  "sequencia": [
+    {
+      "fase": "Nom de la fase",
+      "durada": "X min",
+      "docent": "- Acció 1\\n- Acció 2",
+      "alumne": "- Acció 1\\n- Acció 2",
+      "ia": "- Rol: [Nom]\\n- Acció 1",
+      "referencia": "Justificació pedagògica de la fase",
+      "usaIA": true,
+      "proto": {"doc": 30, "alu": 60, "ia": 10}
+    }
+  ],
+  "competencies4D": {
+    "D1_delegacio": {"activa": true, "detall": "Com es treballa"},
+    "D2_descripcio": {"activa": true, "detall": "Com es treballa"},
+    "D3_discerniment": {"activa": false, "detall": "Per què no s'inclou"},
+    "D4_diligencia": {"activa": false, "detall": "Per què no s'inclou"}
+  },
+  "sempieza": {
+    "nivell": "verd",
+    "resum": "L'activitat promou fricció productiva",
+    "justificacio": "Justificació detallada del semàfor"
+  },
+  "reflexio_ppi": {
+    "moment": "Final de la sessió",
+    "pregunta": "Pregunta de reflexió sense IA"
+  },
+  "inclusio": {
+    "dua_aplicat": "Com s'aplica el Disseny Universal",
+    "adaptacions": "Adaptacions possibles"
+  },
+  "riscos": ["Risc potencial 1 si n'hi ha"],
+  "recomanacions_docent": "Consells pràctics per al docent"
+}`;
 
   const result = await callLLM(prompt, { temperature: 0.7 });
-  return normalizeResult(result);
+  return normalizeResult(result, 'activitat');
 }
 
-// --- STEP 2: ENRICHMENT ---
-export async function enrichWithPedagogy(draft, params) {
-  const knowledge = await loadSpecificKnowledge(['mihia', 'rols', 'friccio']); // AI frameworks
+// ─── STEP 2: AUDITORIA PEDAGÒGICA ──────────────────────────────────────────
+export async function auditGeneratedActivity(activity) {
+  const knowledge = await loadSpecificKnowledge(['friccio']);
 
-  const prompt = `
-  Ets CREACTIVITAT. Ara has d'enriquir aquest esborrany amb PEDAGOGIA IA AVANÇADA.
-  
-  MARCS TEÒRICS:
-  ${knowledge}
-  
-  ESBORRANY ACTUAL:
-  ${JSON.stringify(draft)}
-  
-  PREFERÈNCIES:
-  - MIHIA: ${params.mihiaPreferred || 'Auto'}
-  - Rol: ${params.rolePreferred || 'Auto'}
-  
-  TASCA:
-  1. Defineix el nivell MIHIA i Rol IA.
-  2. Afegeix el camp "rolIA" i "mihia" al JSON.
-  3. Revisa la seqüència paral·lela (docent, alumne, ia, referencia).
-  4. Assegura't que les descripcions de "docent", "alumne" i "ia" són LLISTES DE PUNTS ("- ...").
-  5. Assigna nivells de PROTAGONISME (0-100) realistes per a cada rol a cada fase ("proto": { "doc": X, "alu": Y, "ia": Z }).
-  6. Marca "usaIA": true en les fases on la columna "ia" tingui un paper actiu.
-  7. Afegeix "competencies4D" i "sempieza" (Semàfor de Fricció).
-  
-  Retorna el JSON complet enriquit.
-  `;
+  const prompt = `Ets CREACTIVITAT-AUDITOR, expert en qualitat pedagògica d'activitats amb IA.
 
-  const result = await callLLM(prompt, { temperature: 0.7 });
-  return normalizeResult(result);
+=== MARC DE FRICCIÓ COGNITIVA ===
+${knowledge}
+
+=== ACTIVITAT A AUDITAR ===
+${JSON.stringify(activity, null, 2)}
+
+=== TASCA ===
+Audita la qualitat pedagògica d'aquesta activitat de forma crítica i constructiva.
+
+=== FORMAT (JSON estricte) ===
+{
+  "semafor": {
+    "nivell": "verd|groc|vermell",
+    "resum": "Diagnòstic en 1 frase",
+    "justificacio": "Justificació de 2-3 frases"
+  },
+  "punts_forts": ["Punt fort 1", "Punt fort 2"],
+  "riscos": [
+    {
+      "tipus": "Rendició Cognitiva|Skill Decay|Delegació excessiva|...",
+      "severitat": "alta|mitjana|baixa",
+      "descripcio": "Descripció del risc",
+      "on": "En quina fase/moment"
+    }
+  ],
+  "millores": [
+    {
+      "prioritat": "alta|mitjana|baixa",
+      "descripcio": "Millora concreta",
+      "com": "Com implementar-la",
+      "marc_referencia": "Marc pedagògic que la sustenta"
+    }
+  ],
+  "veredicte": "Resum final de 2-3 frases amb la valoració global i recomanació principal"
+}`;
+
+  const result = await callLLM(prompt, { temperature: 0.3 });
+  return normalizeResult(result, 'auditoria');
 }
 
-// --- STEP 3: POLISH ---
-export async function finalizeActivity(enrichedDraft) {
-  // This step ensures the JSON is perfectly formatted and adds final structural fields if missing
-  // Paradoxically, we don't need a heavy AI call here, just a check or a light call.
-  // For cost saving, we might skip a 3rd call if step 2 is good.
-  // Let's assume step 2 returns the final object, but we validate it here.
-
-  if (!enrichedDraft.titol || !enrichedDraft.sequencia) {
-    throw new Error("L'esborrany final és incomplet.");
-  }
-
-  // Ensure strict fields exists
-  if (!enrichedDraft.inclusio) enrichedDraft.inclusio = { dua_aplicat: "Generat automàticament", adaptacions: "Suport general" };
-  if (!enrichedDraft.reflexio_ppi) enrichedDraft.reflexio_ppi = { moment: "Final", pregunta: "Què has après?" };
-
-  return enrichedDraft;
-}
-
-// --- STEP 4: IMPROVE FROM AUDIT ---
+// ─── GENERATE IMPROVED (per auditoria externa) ─────────────────────────────
 export async function generateImprovedActivity(originalText, auditResults, params = {}) {
   const knowledge = await loadSpecificKnowledge(['friccio', 'mihia', 'rols', 'disseny']);
 
-  const prompt = `
-  Ets CREACTIVITAT, expert en redisseny pedagògic.
-  Has de REESCRIURE l'activitat original per solucionar els problemes detectats a l'auditoria.
-  
-  CONTEXT PEDAGÒGIC:
-  ${knowledge}
-  
-  ACTIVITAT ORIGINAL:
-  ${originalText}
-  
-  INFORME D'AUDITORIA:
-  ${JSON.stringify(auditResults)}
-  
-  OBJECTIU:
-  Crea una versió MILLORADA que augmenti la fricció productiva, redueixi el risc de delegació i incorpori les millores suggerides.
-  L'activitat ha de seguir l'estructura estàndard de CREACTIVITAT (títol, resum, MIHIA, Rol IA, seqüència, 4D, PPI, inclusió).
-  
-  FORMAT JSON (estricte):
-  { "titol": "...", "resum": "...", "mihia": { "nivell": ... }, "rolIA": { ... }, "sequencia": [...], ... }
-  `;
+  const prompt = `Ets CREACTIVITAT, expert en redisseny pedagògic.
+Reescriu l'activitat original aplicant les millores de l'auditoria.
+
+=== CONTEXT PEDAGÒGIC ===
+${knowledge}
+
+=== ACTIVITAT ORIGINAL ===
+${originalText}
+
+=== INFORME D'AUDITORIA ===
+${JSON.stringify(auditResults, null, 2)}
+
+=== FORMAT (JSON estricte, igual que l'activitat original) ===
+Retorna el JSON complet de l'activitat millorada amb el mateix format que generateActivity.
+No incloguis text fora del JSON.`;
 
   const result = await callLLM(prompt, { temperature: 0.7 });
-  return normalizeResult(result);
+  return normalizeResult(result, 'activitat');
 }
 
-function normalizeResult(result) {
-  if (result.rawText) {
-    try {
-      const match = result.rawText.match(/```json?\s*([\s\S]*?)\s*```/);
-      if (match) return JSON.parse(match[1]);
-      return JSON.parse(result.rawText);
-    } catch {
-      return { error: "Error de format JSON IA", rawText: result.rawText };
-    }
+// ─── MANTENIM COMPATIBILITAT AMB NOMS ANTICS ───────────────────────────────
+export async function generateSkeleton(params) {
+  return generateActivity(params);
+}
+
+export async function enrichWithPedagogy(draft) {
+  // Ja no cal pas separat, retornem el draft
+  return draft;
+}
+
+export async function finalizeActivity(draft) {
+  if (!draft || !draft.titol || !draft.sequencia) {
+    throw new Error("L'activitat generada és incompleta. Torna-ho a provar.");
   }
+  if (!draft.inclusio) draft.inclusio = { dua_aplicat: 'Suport general', adaptacions: 'Flexible' };
+  if (!draft.reflexio_ppi) draft.reflexio_ppi = { moment: 'Final', pregunta: 'Què has après avui?' };
+  return draft;
+}
+
+// ─── NORMALITZAR RESULTAT ──────────────────────────────────────────────────
+function normalizeResult(result, type) {
+  if (!result) throw new Error('Resposta buida del model');
+
+  if (result.rawText) {
+    // Intentar extreure JSON del text
+    const text = result.rawText;
+    
+    // Provar blocs ```json
+    const jsonBlock = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonBlock) {
+      try { return JSON.parse(jsonBlock[1]); } catch { /* continua */ }
+    }
+    
+    // Provar primer objecte JSON complet
+    const objectMatch = text.match(/(\{[\s\S]*\})/);
+    if (objectMatch) {
+      try { return JSON.parse(objectMatch[1]); } catch { /* continua */ }
+    }
+
+    console.error(`[Generator] No s'ha pogut parsejar JSON (${type}):`, text.substring(0, 500));
+    return { 
+      error: `El model ha retornat text en format incorrecte. Torna-ho a provar.`,
+      rawText: text.substring(0, 200)
+    };
+  }
+
   return result;
 }

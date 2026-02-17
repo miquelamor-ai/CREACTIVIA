@@ -1,10 +1,11 @@
 // CREACTIVITAT — Configuration
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL_GEMINI = 'gemini-1.5-flash';
+const DEFAULT_MODEL_OPENROUTER = 'google/gemini-2.0-flash-exp:free';
 
 export const CONFIG = {
   PROVIDER: localStorage.getItem('creactivitat_provider') || 'gemini',
-  MODEL: '', // Will be set below
+  MODEL: '',
   API_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models',
   BASE_URL: localStorage.getItem('creactivitat_base_url') || 'https://openrouter.ai/api/v1',
   MAX_OUTPUT_TOKENS: 8192,
@@ -16,43 +17,47 @@ export const CONFIG = {
   STORAGE_KEY_BASEURL: 'creactivitat_base_url',
 };
 
-// Available models for Google Gemini
+// Models Gemini (oficials i verificats feb 2026)
 export const AVAILABLE_MODELS_GEMINI = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Estable · Recomanat)' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Molta qualitat)' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Gran quota)' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash ⭐ (Recomanat · Estable)' },
+  { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B (Ràpid · Quota alta)' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Alta qualitat · Quota baixa)' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Nou · Experimental)' },
 ];
 
-// Available models for OpenAI / OpenRouter / Qwen
+// Models OpenRouter (gratuïts i verificats feb 2026)
 export const AVAILABLE_MODELS_OPENAI = [
-  { id: 'openrouter/free', name: 'Triat per OpenRouter (Més Estable - Gratuït)' },
-  { id: 'google/gemini-2.5-pro-exp-03-25:free', name: 'Gemini 2.5 Pro Exp (Gratuït)' },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp ⭐ (Recomanat · Gratuït)' },
+  { id: 'google/gemini-flash-1-5:free', name: 'Gemini 1.5 Flash (Gratuït · Estable)' },
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Gratuït)' },
   { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1 (Gratuït)' },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B (Molt potent - Cost)' },
-  { id: 'custom', name: 'Model personalitzat...' },
+  { id: 'deepseek/deepseek-chat-v3-0324:free', name: 'DeepSeek V3 (Gratuït · Molt potent)' },
+  { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B (Gratuït)' },
 ];
 
 export function getApiKey() {
-  const key = CONFIG.PROVIDER === 'gemini' ? CONFIG.STORAGE_KEY_API_GEMINI : CONFIG.STORAGE_KEY_API_OPENROUTER;
-  // Fallback for migration if someone had the old generic key
+  const key = CONFIG.PROVIDER === 'gemini'
+    ? CONFIG.STORAGE_KEY_API_GEMINI
+    : CONFIG.STORAGE_KEY_API_OPENROUTER;
   const stored = localStorage.getItem(key);
+  // Migració de clau antiga genèrica
   if (!stored && CONFIG.PROVIDER === 'gemini') return localStorage.getItem('creactivitat_api_key');
   return stored;
 }
 
 export function setApiKey(key) {
-  const storageKey = CONFIG.PROVIDER === 'gemini' ? CONFIG.STORAGE_KEY_API_GEMINI : CONFIG.STORAGE_KEY_API_OPENROUTER;
+  const storageKey = CONFIG.PROVIDER === 'gemini'
+    ? CONFIG.STORAGE_KEY_API_GEMINI
+    : CONFIG.STORAGE_KEY_API_OPENROUTER;
   localStorage.setItem(storageKey, key);
 }
 
 export function getModel() {
   const stored = localStorage.getItem(CONFIG.STORAGE_KEY_MODEL);
   const models = getAvailableModels();
-  // Validate if stored model still exists in available models (except for custom)
-  if (stored === 'custom') return stored;
   const exists = models.find(m => m.id === stored);
-  return exists ? stored : (CONFIG.PROVIDER === 'gemini' ? DEFAULT_MODEL : AVAILABLE_MODELS_OPENAI[0].id);
+  if (exists) return stored;
+  return CONFIG.PROVIDER === 'gemini' ? DEFAULT_MODEL_GEMINI : DEFAULT_MODEL_OPENROUTER;
 }
 
 export function setModel(modelId) {
@@ -63,24 +68,19 @@ export function setModel(modelId) {
 export function setProvider(provider) {
   localStorage.setItem(CONFIG.STORAGE_KEY_PROVIDER, provider);
   CONFIG.PROVIDER = provider;
+  // Reset model to default for new provider
+  const defaultModel = provider === 'gemini' ? DEFAULT_MODEL_GEMINI : DEFAULT_MODEL_OPENROUTER;
+  localStorage.setItem(CONFIG.STORAGE_KEY_MODEL, defaultModel);
+  CONFIG.MODEL = defaultModel;
 }
 
 export function getAvailableModels() {
   return CONFIG.PROVIDER === 'gemini' ? AVAILABLE_MODELS_GEMINI : AVAILABLE_MODELS_OPENAI;
 }
 
-// Initial sync and cleanup for invalid models
+// Init
 (function initConfig() {
-  const currentProvider = localStorage.getItem(CONFIG.STORAGE_KEY_PROVIDER) || 'gemini';
-  const currentModel = localStorage.getItem(CONFIG.STORAGE_KEY_MODEL);
-
-  if (currentProvider === 'gemini') {
-    const isValid = AVAILABLE_MODELS_GEMINI.some(m => m.id === currentModel);
-    if (!isValid && currentModel && currentModel !== 'custom') {
-      console.warn(`[Config] Model Gemini invalid detectat (${currentModel}). Resetting to ${DEFAULT_MODEL}.`);
-      localStorage.setItem(CONFIG.STORAGE_KEY_MODEL, DEFAULT_MODEL);
-    }
-  }
-
+  CONFIG.PROVIDER = localStorage.getItem(CONFIG.STORAGE_KEY_PROVIDER) || 'gemini';
   CONFIG.MODEL = getModel();
+  console.log(`[Config] Provider: ${CONFIG.PROVIDER}, Model: ${CONFIG.MODEL}`);
 })();

@@ -1,88 +1,111 @@
 // CREACTIVITAT — Gemini API Client
 import { CONFIG, getApiKey } from '../config.js';
 
-// Rate limiting state
 let lastCallTime = 0;
-const MIN_DELAY = 8000; // 8 seconds for safer RPM (especially for Pro models)
+const MIN_DELAY = 4000; // 4s entre crides (15 RPM safe)
 
 export async function callGemini(prompt, options = {}) {
-    // RPM Protection: Wait if last call was too recent
-    const now = Date.now();
-    const timeSinceLast = now - lastCallTime;
-    if (timeSinceLast < MIN_DELAY) {
-        const waitTime = MIN_DELAY - timeSinceLast;
-        console.warn(`[RPM protection] Esperant ${Math.round(waitTime)}ms per evitar 429...`);
-        await new Promise(r => setTimeout(r, waitTime));
-    }
-    lastCallTime = Date.now();
+  // Respectar rate limit
+  const now = Date.now();
+  const wait = MIN_DELAY - (now - lastCallTime);
+  if (wait > 0) {
+    console.log(`[Gemini] Esperant ${wait}ms per rate limit...`);
+    await new Promise(r => setTimeout(r, wait));
+  }
+  lastCallTime = Date.now();
 
-    const apiKey = getApiKey();
-    if (!apiKey) throw new Error('Cal configurar la clau API de Gemini');
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('Cal configurar la clau API de Gemini a la barra lateral');
 
-    const model = options.model || CONFIG.MODEL;
-    const url = `${CONFIG.API_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
+  const model = options.model || CONFIG.MODEL;
+  const url = `${CONFIG.API_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
 
-    const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: options.temperature ?? CONFIG.TEMPERATURE,
-            maxOutputTokens: options.maxTokens ?? CONFIG.MAX_OUTPUT_TOKENS,
-            responseMimeType: 'application/json',
-        },
-        safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-    };
+  console.log(`[Gemini] Cridant model: ${model}`);
 
-    let attempts = 0;
-    const maxAttempts = 3; // Reduced but longer waits
-    const baseDelay = 10000; // 10s base delay for 429s
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: options.temperature ?? CONFIG.TEMPERATURE,
+      maxOutputTokens: options.maxTokens ?? CONFIG.MAX_OUTPUT_TOKENS,
+      // NO forcem responseMimeType aquí perquè alguns models no ho suporten
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    ],
+  };
 
-    while (attempts < maxAttempts) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-            if (response.status === 429) {
-                attempts++;
-                if (attempts >= maxAttempts) throw new Error('Massa peticions (429). Els models Pro tenen límits molt estrictes en el nivell gratuït. Prova un model "Flash" o espera un minut.');
-
-                const delay = baseDelay * Math.pow(2, attempts - 1) + Math.random() * 1000;
-                console.warn(`Error 429 detectat. Reintentant en ${Math.round(delay)}ms...`);
-                await new Promise(r => setTimeout(r, delay));
-                continue;
-            }
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(`Error API Gemini (${response.status}): ${err?.error?.message || 'Error desconegut'}`);
-            }
-
-            const data = await response.json();
-            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) throw new Error('Resposta buida de Gemini');
-
-            // Try to parse JSON; if responseMimeType worked, it should be valid JSON
-            try {
-                return JSON.parse(text);
-            } catch {
-                // If JSON parsing fails, return the raw text wrapped in an object
-                return { rawText: text };
-            }
-
-        } catch (error) {
-            if (attempts >= maxAttempts && error.message.includes('429')) throw error;
-            if (!error.message.includes('429')) throw error; // If not 429, throw immediately unless we are in the loop
-            // If we are here, it was a 429 inside the try block (thrown manually or via fetch error if handled differently)
-            // But our logic handles 429 via response.status check.
-            // So this catch block mostly catches network errors or the final 429 error throw.
-            throw error;
+      // 429: quota superada
+      if (response.status === 429) {
+        if (attempt >= maxAttempts) {
+          throw new Error('Quota superada (429). Prova el model Gemini 1.5 Flash 8B o espera un minut.');
         }
+        const delay = 15000 * attempt;
+        console.warn(`[Gemini] 429 - Esperant ${delay}ms (intent ${attempt}/${maxAttempts})...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const msg = errBody?.error?.message || `HTTP ${response.status}`;
+        throw new Error(`Error Gemini API: ${msg}`);
+      }
+
+      const data = await response.json();
+
+      // Comprovar si el model ha bloquejat la resposta
+      const candidate = data?.candidates?.[0];
+      if (!candidate) {
+        const blockReason = data?.promptFeedback?.blockReason;
+        throw new Error(`Resposta buida de Gemini${blockReason ? ` (bloquejada: ${blockReason})` : ''}`);
+      }
+
+      const text = candidate?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('El model no ha retornat text');
+
+      console.log(`[Gemini] Resposta rebuda (${text.length} chars)`);
+      return parseResponse(text);
+
+    } catch (error) {
+      if (attempt >= maxAttempts || !error.message.includes('429')) throw error;
     }
+  }
+}
+
+function parseResponse(text) {
+  // Intentar JSON directe
+  try {
+    return JSON.parse(text);
+  } catch { /* no és JSON pur */ }
+
+  // Buscar bloc ```json ... ```
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[1]);
+    } catch { /* bloc malformat */ }
+  }
+
+  // Buscar el primer { ... } de l'string
+  const objectMatch = text.match(/(\{[\s\S]*\})/);
+  if (objectMatch) {
+    try {
+      return JSON.parse(objectMatch[1]);
+    } catch { /* tampoc */ }
+  }
+
+  // Retornar com rawText per processar manualment
+  return { rawText: text };
 }
