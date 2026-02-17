@@ -1,5 +1,5 @@
 // CREACTIVITAT — Skill: Orchestrator (Quality Chain Architecture)
-import { generateSkeleton, enrichWithPedagogy, finalizeActivity } from './generator.js';
+import { generateSkeleton, enrichWithPedagogy, finalizeActivity, generateImprovedActivity } from './generator.js';
 import { auditActivity } from './auditor.js';
 
 /**
@@ -61,6 +61,31 @@ async function runQualityChain(params) {
 }
 
 async function runAudit(params) {
-    const audit = await auditActivity(params);
-    return { mode: 'audit', activity: null, audit };
+    try {
+        // 1. Run Audit
+        console.log('🔍 Executing Pedagogical Audit...');
+        const audit = await auditActivity(params);
+
+        // DELAY: Rate Limit Safety
+        console.log('⏳ Waiting 4s before generating modified proposal...');
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        // 2. Generate Modified Proposal based on Audit
+        console.log('🎯 Generating Improved Proposal...');
+        const modifiedActivity = await generateImprovedActivity(params.activityText, audit, params);
+
+        return {
+            mode: 'audit',
+            activity: modifiedActivity,
+            audit: audit
+        };
+    } catch (error) {
+        console.error('Audit Chain Failed:', error);
+        return {
+            mode: 'audit',
+            activity: null,
+            audit: null,
+            error: `Error en la auditoria: ${error.message}`
+        };
+    }
 }

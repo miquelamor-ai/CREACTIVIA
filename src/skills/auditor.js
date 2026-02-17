@@ -1,5 +1,5 @@
 // CREACTIVITAT — Skill: Auditor Cognitiu
-import { callGemini } from '../api/gemini.js';
+import { callLLM } from '../api/llm-provider.js';
 import { loadSpecificKnowledge } from '../knowledge/loader.js';
 
 /**
@@ -12,7 +12,7 @@ export async function auditActivity(params) {
   const knowledge = await loadSpecificKnowledge(['friccio', 'etic', 'mihia']);
 
   const prompt = buildAuditPrompt(params, knowledge);
-  const result = await callGemini(prompt, { temperature: 0.4 });
+  const result = await callLLM(prompt, { temperature: 0.4 });
 
   return normalizeAuditResult(result);
 }

@@ -1,10 +1,9 @@
 // CREACTIVITAT — Main Entry Point
-import { getApiKey, setApiKey } from './config.js';
+import { getApiKey, setApiKey, getModel, setModel, getAvailableModels, setProvider, CONFIG } from './config.js';
 import { orchestrate } from './skills/orchestrator.js';
-import { renderWizard } from './ui/wizard.js';
+import { renderGeneratorForm } from './ui/generator-form.js';
 import { renderAuditorForm } from './ui/auditor-form.js';
 import { renderResult } from './ui/result-view.js';
-import { renderSettingsModal } from './ui/settings.js';
 import { addToHistory } from './utils/history.js';
 import { renderHistoryView } from './ui/history-view.js';
 
@@ -12,7 +11,7 @@ import { renderHistoryView } from './ui/history-view.js';
 let currentMode = 'generate';
 
 // --- DOM Elements ---
-const modeTabs = document.querySelectorAll('.tab');
+const navItems = document.querySelectorAll('.nav-item');
 const generateSection = document.getElementById('generate-section');
 const auditSection = document.getElementById('audit-section');
 const historySection = document.getElementById('history-section');
@@ -24,65 +23,111 @@ const resultContainer = document.getElementById('result-container');
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.querySelector('.loading-text');
 const loadingSub = document.querySelector('.loading-sub');
-const apiBanner = document.getElementById('api-key-banner');
-const apiInput = document.getElementById('api-key-input');
-const apiSave = document.getElementById('api-key-save');
+
+// Sidebar Settings
+const sidebarApiKey = document.getElementById('sidebar-api-key');
+const sidebarApiSave = document.getElementById('sidebar-api-save');
+const sidebarApiLabel = document.getElementById('sidebar-api-label');
+const sidebarApiHelp = document.getElementById('sidebar-api-help');
+const sidebarProvider = document.getElementById('sidebar-provider');
+const sidebarModel = document.getElementById('sidebar-model');
 
 // --- Init ---
 function init() {
-    setupAPIKey();
-    setupModeTabs();
-    setupSettings();
-    renderWizard(wizardContainer, handleGenerate);
+    setupSidebarSettings();
+    setupNavigation();
+    renderGeneratorForm(wizardContainer, handleGenerate);
     renderAuditorForm(auditorContainer, handleAudit);
+
+    // Initialize icons
+    if (window.lucide) window.lucide.createIcons();
 }
 
-// --- API Key ---
-function setupAPIKey() {
-    const key = getApiKey();
-    if (key) {
-        apiBanner.classList.add('hidden');
-        apiInput.value = key;
-    }
+// --- Sidebar Settings ---
+function setupSidebarSettings() {
+    sidebarProvider.value = CONFIG.PROVIDER;
 
-    apiSave.addEventListener('click', () => {
-        const key = apiInput.value.trim();
-        if (key) {
-            setApiKey(key);
-            alert('Clau API desada correctament! Recarregant...');
-            location.reload();
+    const updateApiKeyUI = () => {
+        const provider = sidebarProvider.value;
+        const key = getApiKey(); // Uses current CONFIG.PROVIDER
+        sidebarApiKey.value = key || '';
+
+        if (provider === 'gemini') {
+            sidebarApiLabel.innerHTML = '<i data-lucide="key"></i> Google Key';
+            sidebarApiHelp.innerHTML = '<a href="https://aistudio.google.com/app/apikey" target="_blank">Aconsegueix clau de Google</a>';
+            sidebarApiKey.placeholder = 'AIzaSy...';
+        } else {
+            sidebarApiLabel.innerHTML = '<i data-lucide="key"></i> OpenRouter Key';
+            sidebarApiHelp.innerHTML = '<a href="https://openrouter.ai/keys" target="_blank">Aconsegueix clau d\'OpenRouter</a>';
+            sidebarApiKey.placeholder = 'sk-or-...';
+        }
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    const populateModels = () => {
+        const models = getAvailableModels();
+        const currentModel = getModel();
+
+        // Ensure currentModel is in the list if it's a custom one not found in presets
+        const isKnown = models.some(m => m.id === currentModel);
+        const displayModels = [...models];
+        if (!isKnown && currentModel && currentModel !== 'custom') {
+            displayModels.push({ id: currentModel, name: `Personalitzat (${currentModel})` });
+        }
+
+        sidebarModel.innerHTML = displayModels.map(m => `
+            <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
+                ${m.name}
+            </option>
+        `).join('');
+    };
+
+    updateApiKeyUI();
+    populateModels();
+
+    // Save Handlers
+    sidebarApiSave.addEventListener('click', () => {
+        const newKey = sidebarApiKey.value.trim();
+        if (newKey) {
+            setApiKey(newKey);
+            showSuccess('Clau API desada');
         }
     });
 
-    apiInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') apiSave.click();
+    sidebarProvider.addEventListener('change', () => {
+        setProvider(sidebarProvider.value);
+        updateApiKeyUI();
+        populateModels();
+    });
+
+    sidebarModel.addEventListener('change', () => {
+        setModel(sidebarModel.value);
     });
 }
 
-// --- Settings ---
-function setupSettings() {
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => {
-            // Create a container for the modal if it doesn't exist
-            let modalContainer = document.getElementById('modal-container');
-            if (!modalContainer) {
-                modalContainer = document.createElement('div');
-                modalContainer.id = 'modal-container';
-                document.body.appendChild(modalContainer);
-            }
-            renderSettingsModal(modalContainer, () => {
-                // Callback when closed (optional)
-            });
-        });
-    }
+function showSuccess(msg) {
+    // Simple toast or alert replacement
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; left: 20px; 
+        background: var(--c-primary); color: white; 
+        padding: 10px 20px; border-radius: var(--r-md);
+        font-size: 12px; font-weight: 700; z-index: 1000;
+        box-shadow: var(--shadow-lg); transition: all 0.3s ease;
+    `;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
 }
 
-// --- Mode Tabs ---
-function setupModeTabs() {
-    modeTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const mode = tab.dataset.mode;
+// --- Navigation ---
+function setupNavigation() {
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const mode = item.dataset.mode;
             switchMode(mode);
         });
     });
@@ -90,7 +135,7 @@ function setupModeTabs() {
 
 function switchMode(mode) {
     currentMode = mode;
-    modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    navItems.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
 
     generateSection.classList.toggle('active', mode === 'generate');
     auditSection.classList.toggle('active', mode === 'audit');
@@ -108,7 +153,8 @@ function switchMode(mode) {
 // --- Handlers ---
 async function handleGenerate(formData) {
     if (!getApiKey()) {
-        apiBanner.classList.remove('hidden');
+        showSuccess('❗ Necessites una Clau API');
+        sidebarApiKey.focus();
         return;
     }
 
@@ -126,11 +172,12 @@ async function handleGenerate(formData) {
 
 async function handleAudit(params) {
     if (!getApiKey()) {
-        apiBanner.classList.remove('hidden');
+        showSuccess('❗ Necessites una Clau API');
+        sidebarApiKey.focus();
         return;
     }
 
-    showLoading('Auditant l\'activitat...', 'Analitzant segons els marcs pedagògics');
+    showLoading('Auditant l\'activitat...', 'Analitzant criteris pedagògics i dissenyant la millora');
 
     try {
         const result = await orchestrate('audit', params);

@@ -1,7 +1,21 @@
 // CREACTIVITAT — Gemini API Client
 import { CONFIG, getApiKey } from '../config.js';
 
+// Rate limiting state
+let lastCallTime = 0;
+const MIN_DELAY = 8000; // 8 seconds for safer RPM (especially for Pro models)
+
 export async function callGemini(prompt, options = {}) {
+    // RPM Protection: Wait if last call was too recent
+    const now = Date.now();
+    const timeSinceLast = now - lastCallTime;
+    if (timeSinceLast < MIN_DELAY) {
+        const waitTime = MIN_DELAY - timeSinceLast;
+        console.warn(`[RPM protection] Esperant ${Math.round(waitTime)}ms per evitar 429...`);
+        await new Promise(r => setTimeout(r, waitTime));
+    }
+    lastCallTime = Date.now();
+
     const apiKey = getApiKey();
     if (!apiKey) throw new Error('Cal configurar la clau API de Gemini');
 
@@ -24,8 +38,8 @@ export async function callGemini(prompt, options = {}) {
     };
 
     let attempts = 0;
-    const maxAttempts = 3;
-    const baseDelay = 4000; // Start with 4s delay for 429s
+    const maxAttempts = 3; // Reduced but longer waits
+    const baseDelay = 10000; // 10s base delay for 429s
 
     while (attempts < maxAttempts) {
         try {
@@ -37,11 +51,10 @@ export async function callGemini(prompt, options = {}) {
 
             if (response.status === 429) {
                 attempts++;
-                if (attempts >= maxAttempts) throw new Error('Massa peticions (429). Torna-ho a provar en uns minuts.');
+                if (attempts >= maxAttempts) throw new Error('Massa peticions (429). Els models Pro tenen límits molt estrictes en el nivell gratuït. Prova un model "Flash" o espera un minut.');
 
-                // Exponential backoff with jitter
                 const delay = baseDelay * Math.pow(2, attempts - 1) + Math.random() * 1000;
-                console.warn(`Error 429. Retrying in ${Math.round(delay)}ms...`);
+                console.warn(`Error 429 detectat. Reintentant en ${Math.round(delay)}ms...`);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }

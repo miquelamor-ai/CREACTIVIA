@@ -6,8 +6,8 @@ export function renderResult(container, result, onBack) {
   if (error) {
     container.innerHTML = `
         <div class="result-header">
-          <button class="result-back" id="result-back" title="Torna">←</button>
-          <h2 class="result-title" style="color: var(--c-danger)">⚠️ Error</h2>
+          <button class="result-back" id="result-back" title="Torna"><i data-lucide="arrow-left"></i></button>
+          <h2 class="result-title" style="color: var(--c-danger)">Error</h2>
         </div>
         
         <div class="result-content">
@@ -18,8 +18,8 @@ export function renderResult(container, result, onBack) {
               <div style="margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid rgba(239, 68, 68, 0.2);">
                 <p style="font-weight: 600; margin-bottom: var(--sp-2);">💡 Consell de quota:</p>
                 <ul style="margin-left: var(--sp-4); font-size: var(--fs-sm);">
-                  <li>Estàs utilitzant la quota gratuïta. Espera un minut.</li>
-                  <li>Prova de canviar al model <strong>Gemini 1.5 Flash</strong> a la configuració (⚙️), ja que té límits més alts.</li>
+                  <li>Estàs utilitzant la quota gratuïta. Hem augmentat la protecció contra el bombardeig de l'API (RPM), però si l'error persisteix, espera un minut.</li>
+                  <li>Prova de canviar al model <strong>Gemini 1.5 Flash</strong> a la barra lateral (o a la configuració ⚙️), ja que és el que té els límits de quota més alts per al 2026.</li>
                 </ul>
               </div>
             ` : ''}
@@ -27,23 +27,25 @@ export function renderResult(container, result, onBack) {
         </div>
       `;
     container.querySelector('#result-back').addEventListener('click', onBack);
+    window.lucide.createIcons();
     return;
   }
 
   container.innerHTML = `
     <div class="result-header">
       <div style="display: flex; align-items: center; gap: var(--sp-4);">
-        <button class="result-back" id="result-back" title="Torna">←</button>
-        <h2 class="result-title">${mode === 'generate' ? activity?.titol || 'Proposta generada' : '🔍 Auditoria pedagògica'}</h2>
+        <button class="result-back" id="result-back" title="Torna"><i data-lucide="arrow-left"></i></button>
+        <h2 class="result-title">${mode === 'generate' ? activity?.titol || 'Proposta' : 'Auditoria'}</h2>
       </div>
       <div class="result-actions">
-        <button class="btn btn-secondary btn-sm" id="btn-copy" title="Copia al porta-retalls">📋 Copia</button>
-        <button class="btn btn-secondary btn-sm" id="btn-download" title="Descarrega JSON">⬇️ JSON</button>
+        <button class="btn btn-secondary btn-sm" id="btn-copy" title="Copia"><i data-lucide="copy"></i> Copia</button>
+        <button class="btn btn-secondary btn-sm" id="btn-download" title="Descarrega"><i data-lucide="download"></i> JSON</button>
       </div>
     </div>
     
-    ${mode === 'generate' && activity ? renderActivityResult(activity) : ''}
-    ${audit ? renderAuditResult(audit, mode) : ''}
+    <div class="result-layout ${mode === 'generate' ? 'split-view' : 'sequential-view'}">
+      ${mode === 'generate' ? renderGenerateSplit(activity, audit) : renderAuditSequential(audit, activity)}
+    </div>
   `;
 
   container.querySelector('#result-back').addEventListener('click', onBack);
@@ -78,69 +80,105 @@ export function renderResult(container, result, onBack) {
       header.closest('.accordion').classList.toggle('open');
     });
   });
+
+  // Phase Window Toggles (Pedagogical Panel)
+  container.querySelectorAll('.pedagogical-toggle').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const phaseIdx = toggle.dataset.phase;
+      const panel = container.querySelector(`#ped-panel-${phaseIdx}`);
+      if (panel) {
+        panel.classList.toggle('hidden');
+        const chevron = toggle.querySelector('.chevron');
+        if (chevron) chevron.textContent = panel.classList.contains('hidden') ? '▼' : '▲';
+      }
+    });
+  });
 }
 
-function renderActivityResult(act) {
+function renderGenerateSplit(act, audit) {
   return `
-    ${act.resum ? `<p style="color: var(--c-text-secondary); margin-bottom: var(--sp-6); font-size: var(--fs-base); line-height: 1.7;">${act.resum}</p>` : ''}
-    
-    <!-- Badges -->
-    <div class="badges">
-      ${act.granularitat ? `<span class="badge badge-primary">📐 ${act.granularitat}</span>` : ''}
-      ${act.durada ? `<span class="badge">⏱ ${act.durada}</span>` : ''}
-      ${act.etapa ? `<span class="badge">🎓 ${act.etapa}</span>` : ''}
-      ${act.materia ? `<span class="badge">📖 ${act.materia}</span>` : ''}
-      ${act.mihia ? `<span class="badge badge-accent">MIHIA ${act.mihia.nivell}</span>` : ''}
-      ${act.rolIA ? `<span class="badge badge-success">${act.rolIA.principal}</span>` : ''}
-      ${renderCompetencies4DBadges(act.competencies4D)}
+    <!-- Left Column: Programming -->
+    <div class="result-column programming">
+      <h3 class="column-title"><i data-lucide="file-text"></i> Programació Didàctica</h3>
+      <div class="result-card">
+        ${act.resum ? `<p class="activity-summary">${act.resum}</p>` : ''}
+        
+        <div class="activity-context-header">
+          ${act.materia ? `<div class="context-item"><i data-lucide="book-open"></i> <strong>Matèria:</strong> ${act.materia}</div>` : ''}
+          ${act.etapa ? `<div class="context-item"><i data-lucide="graduation-cap"></i> <strong>Etapa/Curs:</strong> ${act.etapa}</div>` : ''}
+          ${act.tema ? `<div class="context-item"><i data-lucide="tag"></i> <strong>Tema:</strong> ${act.tema}</div>` : ''}
+        </div>
+
+        <div class="badges" style="margin-bottom: var(--sp-6); display: flex; gap: var(--sp-2); flex-wrap: wrap;">
+          ${act.granularitat ? `<span class="badge badge-primary"><i data-lucide="layers" style="width:12px"></i> ${act.granularitat}</span>` : ''}
+          ${act.durada ? `<span class="badge"><i data-lucide="clock" style="width:12px"></i> ${act.durada}</span>` : ''}
+        </div>
+
+        ${act.sequencia ? renderSequence(act.sequencia) : ''}
+        
+        <div style="margin-top: var(--sp-6);">
+          ${act.evidencia_aprenentatge ? renderAccordion('📝 Evidència d\'aprenentatge', `<p>${act.evidencia_aprenentatge}</p>`, true) : ''}
+          ${act.recomanacions_docent ? renderAccordion('💡 Recomanacions', `<p>${act.recomanacions_docent}</p>`) : ''}
+        </div>
+      </div>
     </div>
-    
-    <!-- Semaphore -->
-    ${act.sempieza ? renderSemaphore(act.sempieza) : ''}
-    
-    <!-- Didactic Sequence -->
-    ${act.sequencia ? renderSequence(act.sequencia) : ''}
-    
-    <!-- Details Accordions -->
-    ${act.mihia ? renderAccordion('📊 Nivell MIHIA', renderMIHIA(act.mihia)) : ''}
-    ${act.rolIA ? renderAccordion('🎭 Rol de la IA', renderRole(act.rolIA)) : ''}
-    ${act.competencies4D ? renderAccordion('🧭 Competències 4D', renderCompetencies4D(act.competencies4D)) : ''}
-    ${act.grr ? renderAccordion('📈 Responsabilitat Gradual (GRR)', renderGRR(act.grr)) : ''}
-    ${act.reflexio_ppi ? renderAccordion('🪞 Reflexió PPI', renderReflexio(act.reflexio_ppi)) : ''}
-    ${act.inclusio ? renderAccordion('♿ Inclusió i DUA', renderInclusio(act.inclusio)) : ''}
-    ${act.evidencia_aprenentatge ? renderAccordion('📝 Evidència d\'aprenentatge', `<p>${act.evidencia_aprenentatge}</p>`) : ''}
-    ${act.recomanacions_docent ? renderAccordion('💡 Recomanacions per al docent', `<p>${act.recomanacions_docent}</p>`) : ''}
-    ${act.riscos?.length ? renderAccordion('⚠️ Riscos a vigilar', `<ul>${act.riscos.map(r => `<li>${r}</li>`).join('')}</ul>`) : ''}
+
+    <!-- Right Column: Validation -->
+    <div class="result-column validation">
+      <h3 class="column-title"><i data-lucide="shield-check"></i> Validació Pedagògica</h3>
+      
+      ${act.sempieza ? renderSemaphore(act.sempieza) : ''}
+
+      <div class="validation-grid">
+        ${act.mihia ? renderValidationCard('📊 MIHIA', renderMIHIA(act.mihia)) : ''}
+        ${act.rolIA ? renderValidationCard('🎭 Rol IA', renderRole(act.rolIA)) : ''}
+        ${act.competencies4D ? renderValidationCard('🧭 4D', renderCompetencies4D(act.competencies4D)) : ''}
+        ${act.grr ? renderValidationCard('📈 GRR', renderGRR(act.grr)) : ''}
+        ${act.reflexio_ppi ? renderValidationCard('🪞 Reflexió', renderReflexio(act.reflexio_ppi)) : ''}
+      </div>
+
+      ${act.riscos?.length ? renderAccordion('⚠️ Riscos a vigilar', `<ul>${act.riscos.map(r => `<li>${r}</li>`).join('')}</ul>`, true) : ''}
+    </div>
   `;
 }
 
-function renderAuditResult(audit, mode) {
-  const sectionTitle = mode === 'generate' ? 'Auditoria automàtica' : '';
-
+function renderAuditSequential(audit, activity) {
   return `
-    ${mode === 'generate' ? `<h3 style="font-size: var(--fs-lg); font-weight: 700; margin: var(--sp-8) 0 var(--sp-4); padding-top: var(--sp-6); border-top: 1px solid var(--c-border);">🔍 ${sectionTitle}</h3>` : ''}
-    
-    <!-- Semaphore -->
-    ${audit.semafor ? renderSemaphore(audit.semafor) : ''}
-    
-    <!-- Verdict -->
-    ${audit.veredicte ? `<div style="background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--sp-5); margin-bottom: var(--sp-4); font-size: var(--fs-sm); line-height: 1.7;">${audit.veredicte}</div>` : ''}
-    
-    <!-- Strengths -->
-    ${audit.punts_forts?.length ? renderAccordion('✅ Punts forts', `<ul>${audit.punts_forts.map(p => `<li>${p}</li>`).join('')}</ul>`, true) : ''}
-    
-    <!-- Risks -->
-    ${audit.riscos?.length ? renderAccordion('⚠️ Riscos detectats', renderRisks(audit.riscos), true) : ''}
-    
-    <!-- Improvements -->
-    ${audit.millores?.length ? renderAccordion('💡 Propostes de millora', renderImprovements(audit.millores), true) : ''}
-    
-    <!-- Details -->
-    ${audit.mihia_detectat ? renderAccordion('📊 MIHIA detectat', renderDetectedMIHIA(audit.mihia_detectat)) : ''}
-    ${audit.competencies4D ? renderAccordion('🧭 Competències 4D', renderCompetencies4D(audit.competencies4D, true)) : ''}
-    ${audit.reflexio_ppi ? renderAccordion('🪞 Reflexió PPI', renderPPIAudit(audit.reflexio_ppi)) : ''}
-    ${audit.inclusio ? renderAccordion('♿ Inclusió', renderInclusioAudit(audit.inclusio)) : ''}
-    ${audit.principis_rectors ? renderAccordion('🏛️ Principis rectors', renderPrincipis(audit.principis_rectors)) : ''}
+    <!-- Top: Audit Report -->
+    <div class="audit-report-section">
+      <h3 class="column-title">🔍 Informe d'Auditoria</h3>
+      
+      <div class="result-card highlight">
+        ${audit.semafor ? renderSemaphore(audit.semafor) : ''}
+        ${audit.veredicte ? `<div class="audit-verdict">${audit.veredicte}</div>` : ''}
+        
+        <div class="validation-grid">
+          ${audit.punts_forts?.length ? renderValidationCard('✅ Punts forts', `<ul>${audit.punts_forts.map(p => `<li>${p}</li>`).join('')}</ul>`) : ''}
+          ${audit.riscos?.length ? renderValidationCard('⚠️ Riscos', renderRisks(audit.riscos)) : ''}
+        </div>
+
+        <div style="margin-top: var(--sp-6);">
+          ${audit.millores?.length ? renderAccordion('💡 Propostes de millora', renderImprovements(audit.millores), true) : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: Modified Proposal -->
+    <div class="modified-proposal-section" style="margin-top: var(--sp-12);">
+      <h3 class="column-title">🎯 Proposta Modificada</h3>
+      <div class="result-layout split-view">
+        ${activity ? renderGenerateSplit(activity) : '<p style="text-align:center; opacity: 0.5; padding: var(--sp-10);">Generant proposta millorada...</p>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderValidationCard(title, content) {
+  return `
+    <div class="validation-card">
+      <div class="vcard-title">${title}</div>
+      <div class="vcard-content">${content}</div>
+    </div>
   `;
 }
 
@@ -148,12 +186,12 @@ function renderAuditResult(audit, mode) {
 
 function renderSemaphore(sem) {
   const colorClass = sem.nivell === 'verd' ? 'green' : sem.nivell === 'vermell' ? 'red' : 'yellow';
-  const emoji = sem.nivell === 'verd' ? '🟢' : sem.nivell === 'vermell' ? '🔴' : '🟡';
+  const icon = sem.nivell === 'verd' ? 'check-circle' : sem.nivell === 'vermell' ? 'alert-triangle' : 'alert-circle';
   const label = sem.nivell === 'verd' ? 'Fricció productiva' : sem.nivell === 'vermell' ? 'Risc de delegació' : 'Atenció parcial';
 
   return `
     <div class="semaphore ${colorClass}">
-      <div class="semaphore-light">${emoji}</div>
+      <div class="semaphore-light"><i data-lucide="${icon}"></i></div>
       <div class="semaphore-text">
         <div class="semaphore-label">${label}</div>
         <div class="semaphore-desc">${sem.justificacio || sem.resum || ''}</div>
@@ -162,44 +200,99 @@ function renderSemaphore(sem) {
   `;
 }
 
-function renderSequence(seq) {
-  if (!Array.isArray(seq)) return '';
+function parseList(text) {
+  if (!text) return '';
+  if (!text.includes('- ') && !text.includes('* ')) return text;
+  const items = text.split('\n').filter(l => l.trim().startsWith('- ') || l.trim().startsWith('* '));
+  if (items.length === 0) return text;
+  return `<ul>${items.map(i => `<li>${i.trim().substring(2)}</li>`).join('')}</ul>`;
+}
+
+function renderRoleMetric(role, level = 0, label = "Protagonisme") {
+  const colors = {
+    docent: 'var(--c-primary)',
+    alumne: 'var(--c-success)',
+    ia: 'var(--c-accent)'
+  };
   return `
-    <div class="accordion open">
-      <button class="accordion-header">
-        <span class="accordion-icon">📋</span>
-        <span class="accordion-title">Seqüència didàctica</span>
-        <span class="accordion-chevron">▼</span>
-      </button>
-      <div class="accordion-body result-content">
-        ${seq.map((fase, i) => `
-          <div style="padding: var(--sp-4); background: var(--c-surface-2); border-radius: var(--r-md); margin-bottom: var(--sp-3);">
-            <div style="display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2);">
-              <span style="background: var(--c-primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: 700;">${i + 1}</span>
-              <strong>${fase.fase || `Fase ${i + 1}`}</strong>
-              ${fase.durada ? `<span class="badge">${fase.durada}</span>` : ''}
-              ${fase.usaIA ? '<span class="badge badge-accent">🤖 IA</span>' : '<span class="badge">👤 Sense IA</span>'}
-            </div>
-            <p>${fase.descripcio || ''}</p>
-            ${fase.instruccions_alumne ? `<p style="margin-top: var(--sp-2);"><strong>Instruccions alumne:</strong> ${fase.instruccions_alumne}</p>` : ''}
-            ${fase.instruccions_docent ? `<p style="margin-top: var(--sp-2);"><strong>Instruccions docent:</strong> ${fase.instruccions_docent}</p>` : ''}
-            ${fase.prompt_alumne ? `<blockquote style="margin-top: var(--sp-2);">💬 Prompt: "${fase.prompt_alumne}"</blockquote>` : ''}
-          </div>
-        `).join('')}
+    <div class="role-metrics">
+      <div class="metric-header">
+        <div class="metric-label">${label}</div>
+        <div class="metric-info-icon" title="Nivell d'activitat i agència d'aquest rol en aquesta fase."><i data-lucide="help-circle"></i></div>
+      </div>
+      <div class="metric-bar-bg">
+        <div class="metric-bar-fill" style="width: ${level}%; background: ${colors[role]}"></div>
       </div>
     </div>
   `;
 }
 
+function renderSequence(seq) {
+  if (!Array.isArray(seq)) return '';
+  return `
+    <div class="phase-windows-container">
+      ${seq.map((fase, i) => {
+    // Use AI-provided proto levels or fall back to mock logic
+    const docProto = fase.proto?.doc ?? (fase.docent?.length > 100 ? 80 : 50);
+    const aluProto = fase.proto?.alu ?? (fase.alumne?.length > 100 ? 90 : 40);
+    const iaProto = fase.proto?.ia ?? (fase.usaIA ? 70 : 10);
+
+    return `
+        <div class="phase-window" id="phase-${i}">
+          <div class="phase-window-header">
+            <div class="phase-info">
+              <span class="phase-badge">${i + 1}</span>
+              <span class="phase-title">${fase.fase || `Fase ${i + 1}`}</span>
+              ${fase.durada ? `<span class="phase-duration"><i data-lucide="clock" style="width:12px"></i> ${fase.durada}</span>` : ''}
+            </div>
+            ${fase.usaIA ? '<span class="badge badge-accent">🤖 IA Activa</span>' : ''}
+          </div>
+          <div class="phase-roles-grid">
+            <div class="role-sector">
+              <div class="role-label"><i data-lucide="user"></i> Docent</div>
+              <div class="role-content">${parseList(fase.docent)}</div>
+              ${renderRoleMetric('docent', docProto)}
+            </div>
+            <div class="role-sector">
+              <div class="role-label"><i data-lucide="users"></i> Alumne</div>
+              <div class="role-content">${parseList(fase.alumne)}</div>
+              ${renderRoleMetric('alumne', aluProto)}
+            </div>
+            <div class="role-sector sector-ia">
+              <div class="role-label"><i data-lucide="bot"></i> IA</div>
+              <div class="role-content">
+                ${parseList(fase.ia) || (fase.usaIA ? 'Suport actiu' : 'Sense IA')}
+                ${fase.prompt_alumne ? `<div class="seq-prompt">"${fase.prompt_alumne}"</div>` : ''}
+              </div>
+              ${renderRoleMetric('ia', iaProto)}
+            </div>
+          </div>
+          <div class="phase-footer">
+            <button class="pedagogical-toggle" data-phase="${i}">
+              <i data-lucide="graduation-cap"></i>
+              <span>Justificació Pedagògica</span>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </button>
+          </div>
+          <div class="pedagogical-panel hidden" id="ped-panel-${i}">
+            <div class="ped-content">
+              ${fase.referencia || 'Referència contextual no disponible.'}
+            </div>
+          </div>
+        </div>
+      `;
+  }).join('')}
+    </div>
+  `;
+}
+
 function renderAccordion(title, content, openByDefault = false) {
-  const icon = title.match(/^(\S+)/)?.[1] || '📄';
   const label = title.replace(/^\S+\s*/, '');
   return `
     <div class="accordion ${openByDefault ? 'open' : ''}">
       <button class="accordion-header">
-        <span class="accordion-icon">${icon}</span>
         <span class="accordion-title">${label}</span>
-        <span class="accordion-chevron">▼</span>
+        <i data-lucide="chevron-down" class="accordion-chevron"></i>
       </button>
       <div class="accordion-body result-content">${content}</div>
     </div>

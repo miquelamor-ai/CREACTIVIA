@@ -9,72 +9,88 @@
     content="Dissenya i audita activitats d'aula que integren la Intel·ligència Artificial, seguint marcs pedagògics rigorosos." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="/style.css" />
 </head>
 
 <body>
-  <div id="app">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-brand">
+  <div id="app" class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
         <h1 class="logo">CREACTIVITAT</h1>
-        <p class="tagline">Activitats d'aula amb IA · Dissenyades amb rigor pedagògic</p>
+        <p class="tagline">IA & Pedagogia Studio</p>
       </div>
-      <nav class="mode-tabs">
-        <button class="tab active" data-mode="generate">
-          <span class="tab-icon">🎯</span>
-          <span class="tab-label">Genera</span>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-mode="generate">
+          <i data-lucide="sparkles"></i>
+          <span class="nav-label">Genera</span>
         </button>
-        <button class="tab" data-mode="audit">
-          <span class="tab-icon">🔍</span>
-          <span class="tab-label">Audita</span>
+        <button class="nav-item" data-mode="audit">
+          <i data-lucide="shield-check"></i>
+          <span class="nav-label">Audita</span>
         </button>
-        <button class="tab" data-mode="history">
-          <span class="tab-icon">📚</span>
-          <span class="tab-label">Historial</span>
-        </button>
-        <button class="btn btn-ghost btn-sm" id="settings-btn" title="Configuració" style="margin-left: var(--sp-4);">
-          ⚙️
+        <button class="nav-item" data-mode="history">
+          <i data-lucide="history"></i>
+          <span class="nav-label">Historial</span>
         </button>
       </nav>
-    </header>
 
-    <!-- API Key Banner -->
-    <div id="api-key-banner" class="api-banner">
-      <div class="api-banner-content">
-        <span class="api-banner-icon">🔑</span>
-        <p>Introdueix la teva clau API de Gemini per començar</p>
-        <div class="api-input-group">
-          <input type="password" id="api-key-input" placeholder="AIzaSy..." class="api-input" />
-          <button id="api-key-save" class="btn btn-primary btn-sm">Desa</button>
+      <div class="sidebar-settings">
+        <div class="settings-group">
+          <label class="settings-label" id="sidebar-api-label"><i data-lucide="key"></i> API Key</label>
+          <div class="settings-api-input">
+            <input type="password" id="sidebar-api-key" placeholder="AIzaSy..." />
+            <button id="sidebar-api-save" title="Desa"><i data-lucide="check"></i></button>
+          </div>
+          <div id="sidebar-api-help" class="form-hint" style="margin-top: 4px;"></div>
+        </div>
+        <div class="settings-group">
+          <label class="settings-label"><i data-lucide="cloud"></i> Proveïdor</label>
+          <select id="sidebar-provider" class="settings-select">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenRouter (Qwen/Llama)</option>
+          </select>
+        </div>
+        <div class="settings-group">
+          <label class="settings-label"><i data-lucide="cpu"></i> Model</label>
+          <select id="sidebar-model" class="settings-select">
+            <!-- Models populated by main.js -->
+          </select>
         </div>
       </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Generate Mode -->
+        <section id="generate-section" class="mode-section active">
+          <div id="wizard-container"></div>
+        </section>
+
+        <!-- Audit Mode -->
+        <section id="audit-section" class="mode-section">
+          <div id="auditor-container"></div>
+        </section>
+
+        <!-- History Mode -->
+        <section id="history-section" class="mode-section">
+          <div id="history-container"></div>
+        </section>
+
+        <!-- Results -->
+        <section id="result-section" class="result-section hidden">
+          <div id="result-container"></div>
+        </section>
+      </main>
     </div>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Generate Mode -->
-      <section id="generate-section" class="mode-section active">
-        <div id="wizard-container"></div>
-      </section>
-
-      <!-- Audit Mode -->
-      <section id="audit-section" class="mode-section">
-        <div id="auditor-container"></div>
-      </section>
-
-      <!-- History Mode -->
-      <section id="history-section" class="mode-section">
-        <div id="history-container"></div>
-      </section>
-
-      <!-- Results -->
-      <section id="result-section" class="result-section hidden">
-        <div id="result-container"></div>
-      </section>
-    </main>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay hidden">

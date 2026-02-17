@@ -16,27 +16,51 @@ export function renderSettingsModal(container, onClose) {
         </div>
         <div class="modal-body">
           
-          <!-- API Key Section -->
+          <!-- Provider Section -->
           <div class="form-group">
-            <label class="form-label">Google Gemini API Key</label>
-            <div style="display: flex; gap: var(--sp-2);">
-              <input type="password" id="settings-api-key" class="form-input" value="${apiKey}" placeholder="Enganxa la teva clau API aquí" />
-              <button class="btn btn-ghost" id="toggle-key-vis">👁️</button>
-            </div>
-            <p class="form-hint">Es guarda localment al navegador.</p>
+            <label class="form-label">Proveïdor d'IA</label>
+            <select id="settings-provider" class="form-select">
+              <option value="gemini" ${CONFIG.PROVIDER === 'gemini' ? 'selected' : ''}>Google Gemini (Oficial)</option>
+              <option value="openai" ${CONFIG.PROVIDER === 'openai' ? 'selected' : ''}>OpenRouter / Qwen / OpenAI compatible</option>
+            </select>
           </div>
 
           <!-- Model Section -->
           <div class="form-group">
             <label class="form-label">Model IA</label>
-            <select id="settings-model" class="form-select">
-              ${models.map(m => `
-                <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
-                  ${m.name} (${m.id})
-                </option>
-              `).join('')}
-            </select>
-            <p class="form-hint">Si tens errors de "Quota" o "404", prova de canviar el model.</p>
+            <div id="model-select-wrapper">
+              <select id="settings-model" class="form-select">
+                ${models.map(m => `
+                  <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
+                    ${m.name} ${m.id !== 'custom' ? `(${m.id})` : ''}
+                  </option>
+                `).join('')}
+              </select>
+              <input type="text" id="settings-custom-model" class="form-input" 
+                value="${!models.some(m => m.id === currentModel) || currentModel === 'custom' ? currentModel : ''}" 
+                placeholder="Ex: qwen/qwen-2.5-72b-instruct" 
+                style="${(currentModel !== 'custom' && models.some(m => m.id === currentModel)) ? 'display:none; margin-top:var(--sp-2)' : 'margin-top:var(--sp-2)'}" />
+            </div>
+            <p class="form-hint" id="model-hint">
+              ${CONFIG.PROVIDER === 'gemini'
+            ? 'Si tens errors de "Quota", prova un model Flash.'
+            : 'Pots triar un preset o escriure el nom del model d\'OpenRouter.'}
+            </p>
+          </div>
+
+          <!-- Base URL Section (Conditional) -->
+          <div class="form-group" id="base-url-group" ${CONFIG.PROVIDER === 'gemini' ? 'style="display:none"' : ''}>
+            <label class="form-label">Base URL (OpenAI compatible)</label>
+            <input type="text" id="settings-base-url" class="form-input" value="${CONFIG.BASE_URL}" placeholder="https://openrouter.ai/api/v1" />
+            <p class="form-hint">URL de l'API (ex: OpenRouter, Groq, Ollama).</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Clau API</label>
+            <div style="display: flex; gap: var(--sp-2);">
+              <input type="password" id="settings-api-key" class="form-input" value="${apiKey}" placeholder="Enganxa la teva clau API aquí" />
+              <button class="btn btn-ghost" id="toggle-key-vis">👁️</button>
+            </div>
           </div>
 
         </div>
@@ -58,6 +82,10 @@ export function renderSettingsModal(container, onClose) {
     const toggleVisBtn = container.querySelector('#toggle-key-vis');
     const keyInput = container.querySelector('#settings-api-key');
     const modelSelect = container.querySelector('#settings-model');
+    const providerSelect = container.querySelector('#settings-provider');
+    const customModelInput = container.querySelector('#settings-custom-model');
+    const baseUrlInput = container.querySelector('#settings-base-url');
+    const baseUrlGroup = container.querySelector('#base-url-group');
 
     const close = () => {
         container.innerHTML = '';
@@ -69,10 +97,15 @@ export function renderSettingsModal(container, onClose) {
 
     saveBtn.addEventListener('click', () => {
         const newKey = keyInput.value.trim();
-        const newModel = modelSelect.value;
+        const newProvider = providerSelect.value;
+        const newModel = newProvider === 'gemini' ? modelSelect.value : customModelInput.value.trim();
+        const newBaseUrl = baseUrlInput.value.trim();
 
         if (newKey) setApiKey(newKey);
-        setModel(newModel);
+
+        localStorage.setItem(CONFIG.STORAGE_KEY_PROVIDER, newProvider);
+        localStorage.setItem(CONFIG.STORAGE_KEY_MODEL, newModel);
+        localStorage.setItem(CONFIG.STORAGE_KEY_BASEURL, newBaseUrl);
 
         alert('Configuració desada correctament.');
         close();
@@ -82,4 +115,40 @@ export function renderSettingsModal(container, onClose) {
     toggleVisBtn.addEventListener('click', () => {
         keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
     });
+
+    const updateModelList = () => {
+        const provider = providerSelect.value;
+        // Temporarily set provider in CONFIG so getAvailableModels returns the right list
+        const oldProvider = CONFIG.PROVIDER;
+        CONFIG.PROVIDER = provider;
+        const models = getAvailableModels();
+        CONFIG.PROVIDER = oldProvider; // Restore
+
+        modelSelect.innerHTML = models.map(m => `
+            <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
+                ${m.name} ${m.id !== 'custom' ? `(${m.id})` : ''}
+            </option>
+        `).join('');
+
+        const isGemini = provider === 'gemini';
+        baseUrlGroup.style.display = isGemini ? 'none' : 'block';
+
+        // Show custom input if provider is not gemini AND model is custom
+        const isCustom = modelSelect.value === 'custom' || !isGemini;
+        customModelInput.style.display = isCustom ? 'block' : 'none';
+
+        modelHint.textContent = isGemini
+            ? 'Si tens errors de "Quota", prova un model Flash.'
+            : 'Pots triar un preset o escriure el nom del model d\'OpenRouter.';
+    };
+
+    providerSelect.addEventListener('change', updateModelList);
+
+    modelSelect.addEventListener('change', () => {
+        const isGemini = providerSelect.value === 'gemini';
+        customModelInput.style.display = (modelSelect.value === 'custom' || !isGemini) ? 'block' : 'none';
+    });
+
+    // Initialize state
+    updateModelList();
 }
