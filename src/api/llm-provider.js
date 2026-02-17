@@ -1,7 +1,7 @@
 // CREACTIVITAT — Unified LLM Provider
 import { CONFIG } from '../config.js';
-import { callGemini } from './gemini.js';
-import { callOpenAI } from './openai.js';
+import { callGemini, verifyGeminiKey } from './gemini.js';
+import { callOpenAI, verifyOpenRouterKey } from './openai.js';
 
 /**
  * Call the configured LLM provider.
@@ -18,4 +18,14 @@ export async function callLLM(prompt, options = {}) {
 
     // Default to Gemini
     return await callGemini(prompt, options);
+}
+
+/**
+ * Verify API key for the current or specified provider.
+ */
+export async function testConnection(provider, key) {
+    if (provider === 'openai' || provider === 'openrouter') {
+        return await verifyOpenRouterKey(key);
+    }
+    return await verifyGeminiKey(key);
 }

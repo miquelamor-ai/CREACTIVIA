@@ -8,6 +8,13 @@ const STAGES = [
   { value: 'fp', label: 'FP', sub: 'Prof.' },
 ];
 
+const KNOWLEDGE_LEVELS = [
+  { value: 'inicial', label: 'Inicial', sub: 'Nou contingut' },
+  { value: 'repas', label: 'Repàs', sub: 'Recordar' },
+  { value: 'reforç', label: 'Reforç', sub: 'Dificultats' },
+  { value: 'aprofundiment', label: 'Aprofundiment', sub: 'Anar més enllà' },
+];
+
 const GRANULARITIES = [
   { value: 'exercici', icon: 'file-text', label: 'Exercici', sub: '5-20 min' },
   { value: 'activitat', icon: 'clipboard-list', label: 'Activitat', sub: '1 sessió' },
@@ -52,6 +59,7 @@ function saveDraft(data) {
 let formData = loadDraft() || {
   granularity: 'activitat', stage: '', subject: '', topic: '',
   objective: '', duration: '1 sessió', mihiaPreferred: '', rolePreferred: '',
+  knowledgeLevel: 'inicial',
 };
 
 export function renderGeneratorForm(container, onSubmit) {
@@ -103,6 +111,20 @@ export function renderGeneratorForm(container, onSubmit) {
             <label class="form-label" for="f-duration">Durada</label>
             <input type="text" id="f-duration" class="form-input" 
               value="${esc(formData.duration)}" placeholder="1 sessió" />
+          </div>
+        </div>
+
+        <!-- Nivell de coneixement -->
+        <div class="form-group">
+          <label class="form-label">Nivell de coneixement / Moment</label>
+          <div class="chip-grid chip-grid-secondary">
+            ${KNOWLEDGE_LEVELS.map(k => `
+              <button type="button" class="chip ${formData.knowledgeLevel === k.value ? 'chip-active' : ''}"
+                data-field="knowledgeLevel" data-value="${k.value}">
+                <span class="chip-label">${k.label}</span>
+                <span class="chip-sub">${k.sub}</span>
+              </button>
+            `).join('')}
           </div>
         </div>
 
@@ -183,9 +205,10 @@ function attachFormEvents(container, onSubmit) {
   // Chips (granularitat)
   container.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      container.querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
+      const field = chip.dataset.field || 'granularity';
+      chip.closest('.chip-grid').querySelectorAll('.chip').forEach(c => c.classList.remove('chip-active'));
       chip.classList.add('chip-active');
-      formData.granularity = chip.dataset.value;
+      formData[field] = chip.dataset.value;
       saveDraft(formData);
     });
   });
@@ -214,7 +237,7 @@ function attachFormEvents(container, onSubmit) {
   // Reinicia
   container.querySelector('#btn-clear-draft')?.addEventListener('click', () => {
     if (!confirm('Vols reiniciar el formulari?')) return;
-    formData = { granularity: 'activitat', stage: '', subject: '', topic: '', objective: '', duration: '1 sessió', mihiaPreferred: '', rolePreferred: '' };
+    formData = { granularity: 'activitat', stage: '', subject: '', topic: '', objective: '', duration: '1 sessió', mihiaPreferred: '', rolePreferred: '', knowledgeLevel: 'inicial' };
     localStorage.removeItem(DRAFT_KEY);
     renderGeneratorForm(container, onSubmit);
   });

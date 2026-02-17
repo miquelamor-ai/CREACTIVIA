@@ -42,27 +42,21 @@ export async function callOpenAI(prompt, options = {}) {
       throw new Error(`Error de xarxa: ${networkErr.message}`);
     }
 
-    // Error 401/403: clau invàlida
-    if (response.status === 401 || response.status === 403) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(`Clau OpenRouter invàlida o caducada (${response.status}). Ves a openrouter.ai/keys i crea una nova clau.`);
-    }
-
-    // Error 502: problema d'autenticació (Clerk) — normalment és la clau invàlida
-    if (response.status === 502) {
-      throw new Error(`Error 502 d'OpenRouter: La clau API és invàlida o ha caducat. Ves a openrouter.ai/keys, crea una nova clau i enganxa-la a la barra lateral.`);
-    }
-
-    if (response.status === 429 || response.status >= 500) {
-      if (attempt >= maxAttempts) throw new Error(`Error ${response.status}: Servidor saturat. Prova un altre model.`);
-      console.warn(`[OpenRouter] ${response.status} - Reintentant en ${10 * attempt}s...`);
-      await new Promise(r => setTimeout(r, 10000 * attempt));
-      continue;
-    }
-
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(`Error OpenRouter (${response.status}): ${err?.error?.message || 'Error desconegut'}`);
+      const msg = err?.error?.message || 'Error desconegut';
+
+      // Error 401/403: clau invàlida
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`Clau OpenRouter invàlida o caducada (${response.status}). Revisa la configuració.`);
+      }
+
+      // Error 502: problema d'autenticació (Clerk) o pasarel·la
+      if (response.status === 502) {
+        throw new Error(`Error 502 d'OpenRouter: Probablement la clau API és invàlida o hi ha un problema de connexió temporal.`);
+      }
+
+      throw new Error(`Error OpenRouter (${response.status}): ${msg}`);
     }
 
     const data = await response.json();
@@ -71,6 +65,25 @@ export async function callOpenAI(prompt, options = {}) {
 
     console.log(`[OpenRouter] OK (${content.length} chars)`);
     return parseJSON(content);
+  }
+}
+
+export async function verifyOpenRouterKey(key) {
+  const baseUrl = CONFIG.BASE_URL || 'https://openrouter.ai/api/v1';
+  try {
+    const response = await fetch(`${baseUrl}/auth/key`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'HTTP-Referer': 'https://creactivitat.edu',
+        'X-Title': 'Creactivitat',
+      },
+    });
+    const data = await response.json();
+    if (response.ok) return { ok: true, data };
+    return { ok: false, message: data?.error?.message || `Error ${response.status}` };
+  } catch (e) {
+    return { ok: false, message: e.message };
   }
 }
 

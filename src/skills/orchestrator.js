@@ -1,4 +1,5 @@
 // CREACTIVITAT — Orchestrator (Simplificat: 2 crides LLM)
+import { CONFIG } from '../config.js';
 import { generateActivity, auditGeneratedActivity, generateImprovedActivity } from './generator.js';
 import { auditActivity } from './auditor.js';
 
@@ -23,7 +24,14 @@ async function runGenerate(params) {
     console.log('🔍 [2/2] Auditant qualitat pedagògica...');
     const audit = await auditGeneratedActivity(activity);
 
-    return { mode: 'generate', activity, audit };
+    return {
+      mode: 'generate',
+      activity,
+      audit,
+      timestamp: Date.now(),
+      modelUsed: CONFIG.MODEL,
+      inputParams: { ...params }
+    };
 
   } catch (error) {
     console.error('[Orchestrator] Error en generació:', error);
@@ -31,7 +39,10 @@ async function runGenerate(params) {
       mode: 'generate',
       activity: null,
       audit: null,
-      error: error.message
+      error: error.message,
+      timestamp: Date.now(),
+      modelUsed: CONFIG.MODEL,
+      inputParams: { ...params }
     };
   }
 }
@@ -50,7 +61,14 @@ async function runAudit(params) {
     console.log('🎯 [2/2] Generant versió millorada...');
     const improvedActivity = await generateImprovedActivity(params.activityText, audit, params);
 
-    return { mode: 'audit', activity: improvedActivity, audit };
+    return {
+      mode: 'audit',
+      activity: improvedActivity,
+      audit,
+      timestamp: Date.now(),
+      modelUsed: CONFIG.MODEL,
+      inputParams: { ...params }
+    };
 
   } catch (error) {
     console.error('[Orchestrator] Error en auditoria:', error);
@@ -58,7 +76,10 @@ async function runAudit(params) {
       mode: 'audit',
       activity: null,
       audit: null,
-      error: error.message
+      error: error.message,
+      timestamp: Date.now(),
+      modelUsed: CONFIG.MODEL,
+      inputParams: { ...params }
     };
   }
 }

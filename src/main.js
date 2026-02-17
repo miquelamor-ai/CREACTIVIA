@@ -1,5 +1,6 @@
 // CREACTIVITAT — Main Entry Point
 import { getApiKey, setApiKey, getModel, setModel, getAvailableModels, setProvider, CONFIG } from './config.js';
+import { testConnection } from './api/llm-provider.js';
 import { orchestrate } from './skills/orchestrator.js';
 import { renderGeneratorForm } from './ui/generator-form.js';
 import { renderAuditorForm } from './ui/auditor-form.js';
@@ -27,6 +28,7 @@ const loadingSub = document.querySelector('.loading-sub');
 // Sidebar Settings
 const sidebarApiKey = document.getElementById('sidebar-api-key');
 const sidebarApiSave = document.getElementById('sidebar-api-save');
+const sidebarApiTest = document.getElementById('sidebar-api-test');
 const sidebarApiLabel = document.getElementById('sidebar-api-label');
 const sidebarApiHelp = document.getElementById('sidebar-api-help');
 const sidebarProvider = document.getElementById('sidebar-provider');
@@ -92,6 +94,49 @@ function setupSidebarSettings() {
             setApiKey(newKey);
             showSuccess('Clau API desada');
         }
+    });
+
+    sidebarApiTest.addEventListener('click', async () => {
+        const key = sidebarApiKey.value.trim();
+        const provider = sidebarProvider.value;
+
+        if (!key) {
+            showSuccess('❗ Introdueix una clau primer');
+            return;
+        }
+
+        sidebarApiTest.classList.add('loading');
+        sidebarApiTest.innerHTML = '<i data-lucide="loader-2"></i>';
+        if (window.lucide) window.lucide.createIcons();
+
+        try {
+            const result = await testConnection(provider, key);
+            sidebarApiTest.classList.remove('loading');
+
+            if (result.ok) {
+                sidebarApiTest.classList.add('success');
+                sidebarApiTest.innerHTML = '<i data-lucide="check"></i>';
+                showSuccess('✅ Connexió correcta!');
+            } else {
+                sidebarApiTest.classList.add('error');
+                sidebarApiTest.innerHTML = '<i data-lucide="x"></i>';
+                alert(`Error de connexió: ${result.message}`);
+            }
+        } catch (err) {
+            sidebarApiTest.classList.remove('loading');
+            sidebarApiTest.classList.add('error');
+            sidebarApiTest.innerHTML = '<i data-lucide="alert-triangle"></i>';
+            alert(`Error: ${err.message}`);
+        }
+
+        if (window.lucide) window.lucide.createIcons();
+
+        // Reset icon after 3 seconds
+        setTimeout(() => {
+            sidebarApiTest.classList.remove('success', 'error');
+            sidebarApiTest.innerHTML = '<i data-lucide="zap"></i>';
+            if (window.lucide) window.lucide.createIcons();
+        }, 3000);
     });
 
     sidebarProvider.addEventListener('change', () => {

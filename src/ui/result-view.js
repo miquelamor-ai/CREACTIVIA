@@ -44,7 +44,7 @@ export function renderResult(container, result, onBack) {
     </div>
     
     <div class="result-layout ${mode === 'generate' ? 'split-view' : 'sequential-view'}">
-      ${mode === 'generate' ? renderGenerateSplit(activity, audit) : renderAuditSequential(audit, activity)}
+      ${mode === 'generate' ? renderGenerateSplit(activity, audit, result) : renderAuditSequential(audit, activity, result)}
     </div>
   `;
 
@@ -93,32 +93,89 @@ export function renderResult(container, result, onBack) {
       }
     });
   });
+
+  if (window.lucide) window.lucide.createIcons();
 }
 
-function renderGenerateSplit(act, audit) {
+function renderGenerateSplit(act, audit, result) {
+  const meta = act.metadata || {
+    etapa: act.etapa,
+    materia: act.materia,
+    tema: act.tema,
+    nivell: 'inicial',
+    granularitat: act.granularitat,
+    durada: act.durada
+  };
+
   return `
     <!-- Left Column: Programming -->
     <div class="result-column programming">
       <h3 class="column-title"><i data-lucide="file-text"></i> Programació Didàctica</h3>
-      <div class="result-card">
-        ${act.resum ? `<p class="activity-summary">${act.resum}</p>` : ''}
+      <div class="result-card" style="padding: var(--sp-8);">
+        ${act.resum ? `<p class="activity-summary" style="margin-bottom: var(--sp-8);">${act.resum.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>` : ''}
         
-        <div class="activity-context-header">
-          ${act.materia ? `<div class="context-item"><i data-lucide="book-open"></i> <strong>Matèria:</strong> ${act.materia}</div>` : ''}
-          ${act.etapa ? `<div class="context-item"><i data-lucide="graduation-cap"></i> <strong>Etapa/Curs:</strong> ${act.etapa}</div>` : ''}
-          ${act.tema ? `<div class="context-item"><i data-lucide="tag"></i> <strong>Tema:</strong> ${act.tema}</div>` : ''}
+        <div class="activity-metadata-horizontal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+          <div class="meta-box">
+             <span class="meta-label">Matèria</span>
+             <span class="meta-value">${meta.materia || '-'}</span>
+          </div>
+          <div class="meta-box">
+             <span class="meta-label">Etapa</span>
+             <span class="meta-value">${meta.etapa || '-'}</span>
+          </div>
+          <div class="meta-box">
+             <span class="meta-label">Tipus</span>
+             <span class="meta-value">${meta.granularitat || 'activitat'}</span>
+          </div>
+          <div class="meta-box">
+             <span class="meta-label">Tema</span>
+             <span class="meta-value">${meta.tema || '-'}</span>
+          </div>
+          <div class="meta-box">
+             <span class="meta-label">Nivell</span>
+             <span class="meta-value">${meta.nivell || 'inicial'}</span>
+          </div>
+          <div class="meta-box">
+             <span class="meta-label">Durada</span>
+             <span class="meta-value">${meta.durada || '1 sessió'}</span>
+          </div>
         </div>
 
-        <div class="badges" style="margin-bottom: var(--sp-6); display: flex; gap: var(--sp-2); flex-wrap: wrap;">
-          ${act.granularitat ? `<span class="badge badge-primary"><i data-lucide="layers" style="width:12px"></i> ${act.granularitat}</span>` : ''}
-          ${act.durada ? `<span class="badge"><i data-lucide="clock" style="width:12px"></i> ${act.durada}</span>` : ''}
-        </div>
+        <div class="programming-sections" style="display: flex; flex-direction: column; gap: var(--sp-6);">
+          ${act.objectiu ? renderAccordion('🎯 Objectiu d\'Aprenentatge', `<p style="padding: var(--sp-2) 0;">${act.objectiu}</p>`, true) : ''}
 
-        ${act.sequencia ? renderSequence(act.sequencia) : ''}
-        
-        <div style="margin-top: var(--sp-6);">
-          ${act.evidencia_aprenentatge ? renderAccordion('📝 Evidència d\'aprenentatge', `<p>${act.evidencia_aprenentatge}</p>`, true) : ''}
-          ${act.recomanacions_docent ? renderAccordion('💡 Recomanacions', `<p>${act.recomanacions_docent}</p>`) : ''}
+          ${act.previ ? renderAccordion('🛠️ Preparació Prèvia (Docent i IA)', `
+            <div class="previ-section" style="padding: var(--sp-2) 0;">
+              <div class="previ-item"><strong>Configuració IA:</strong> ${act.previ.ia_config || ''}</div>
+              <div class="previ-item"><strong>Prompt de Sistema:</strong> <code style="display:block; background: var(--c-surface-3); padding: var(--sp-3); border-radius: var(--r-sm); margin: var(--sp-2) 0; font-size: var(--fs-xs);">${act.previ.prompt_sistema || 'No cal configuració específica.'}</code></div>
+              <div class="previ-item"><strong>Guardrails:</strong> ${act.previ.guardrails || ''}</div>
+              <div class="previ-item" style="margin-top: var(--sp-4)"><strong>Preparació Docent:</strong> ${act.previ.preparacio_docent || ''}</div>
+              <div class="previ-item"><strong>Preparació Alumne:</strong> ${act.previ.preparacio_alumne || ''}</div>
+              
+              <div class="alert alert-info" style="margin-top: var(--sp-6); font-size: var(--fs-xs); background: var(--c-primary-light); padding: var(--sp-4); border-radius: var(--r-md); border-left: 4px solid var(--c-primary); display: flex; gap: var(--sp-3);">
+                <i data-lucide="info" style="width:16px; min-width:16px; margin-top: 2px; color: var(--c-primary)"></i>
+                <span>Recordeu que per a alumnes menors d'edat cal comptar amb l'autorització del centre i les famílies per a l'ús d'eines d'IA.</span>
+              </div>
+            </div>
+          `, false) : ''}
+
+          <div class="sequence-section-block" style="margin-top: var(--sp-4);">
+            <div class="sequence-section-title" style="margin-bottom: var(--sp-4); font-weight: 700; font-size: var(--fs-base); color: var(--c-text);">🗓️ Seqüència Didàctica</div>
+            ${act.sequencia ? renderSequence(act.sequencia) : ''}
+          </div>
+          
+          ${act.avaluacio ? renderAccordion('📊 Avaluació i Feedback', `
+            <div class="avaluacio-section" style="padding: var(--sp-2) 0;">
+              <div class="av-item"><strong>Criteris d'èxit:</strong> ${parseList(act.avaluacio.criteris)}</div>
+              <div class="av-item" style="margin-top: var(--sp-4)"><strong>Estratègies formatives:</strong> <p>${act.avaluacio.estrategies || ''}</p></div>
+              <p style="margin-top: var(--sp-4)"><strong>Feedback i Rúbrica:</strong> ${act.avaluacio.feedback || ''}</p>
+            </div>
+          `, false) : ''}
+
+          <div class="final-sections" style="display: flex; flex-direction: column; gap: var(--sp-4);">
+            ${act.inclusio ? renderAccordion('♿ Inclusió (DUA)', `<div style="padding: var(--sp-2) 0;"><p><strong>DUA:</strong> ${act.inclusio.dua_aplicat}</p><p><strong>Adaptacions:</strong> ${act.inclusio.adaptacions}</p></div>`) : ''}
+            ${act.recomanacions_docent ? renderAccordion('💡 Recomanacions', `<p style="padding: var(--sp-2) 0;">${act.recomanacions_docent}</p>`) : ''}
+          </div>
         </div>
       </div>
     </div>
@@ -130,19 +187,41 @@ function renderGenerateSplit(act, audit) {
       ${act.sempieza ? renderSemaphore(act.sempieza) : ''}
 
       <div class="validation-grid">
-        ${act.mihia ? renderValidationCard('📊 MIHIA', renderMIHIA(act.mihia)) : ''}
-        ${act.rolIA ? renderValidationCard('🎭 Rol IA', renderRole(act.rolIA)) : ''}
-        ${act.competencies4D ? renderValidationCard('🧭 4D', renderCompetencies4D(act.competencies4D)) : ''}
-        ${act.grr ? renderValidationCard('📈 GRR', renderGRR(act.grr)) : ''}
-        ${act.reflexio_ppi ? renderValidationCard('🪞 Reflexió', renderReflexio(act.reflexio_ppi)) : ''}
+        <div class="validation-card" style="padding: var(--sp-4);">
+          <div class="vcard-title">📋 Fonaments</div>
+          <div class="vcard-content">
+            ${act.mihia ? `<div style="margin-bottom: var(--sp-4);"><strong>MIHIA:</strong> ${renderMIHIA(act.mihia)}</div>` : ''}
+            ${act.rolIA ? `<div><strong>Rol IA:</strong> ${renderRole(act.rolIA)}</div>` : ''}
+          </div>
+        </div>
+        
+        ${act.competencies4D ? renderValidationCard('🧭 Competències 4D', renderCompetencies4D(act.competencies4D)) : ''}
+        ${act.reflexio_ppi ? renderValidationCard('🪞 Reflexió (PPI)', renderReflexio(act.reflexio_ppi)) : ''}
       </div>
 
       ${act.riscos?.length ? renderAccordion('⚠️ Riscos a vigilar', `<ul>${act.riscos.map(r => `<li>${r}</li>`).join('')}</ul>`, true) : ''}
+      
+      ${renderTechnicalLog(result)}
     </div>
   `;
 }
 
-function renderAuditSequential(audit, activity) {
+function renderTechnicalLog(result) {
+  return `
+    <div style="margin-top: var(--sp-8); opacity: 0.6; transition: opacity 0.3s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      ${renderAccordion('⚙️ Detalls Tècnics (Log)', `
+        <div style="font-size: var(--fs-xs); line-height: 1.6;">
+          <p><strong>Model:</strong> <code style="background: var(--c-surface-3); padding: 2px 4px; border-radius: 4px;">${result?.modelUsed || 'Desconegut'}</code></p>
+          <p><strong>Inputs originals:</strong></p>
+          <pre style="background: var(--c-surface-3); padding: var(--sp-3); border-radius: var(--r-sm); overflow-x: auto; max-height: 200px; font-family: monospace;">${JSON.stringify(result?.inputParams || {}, null, 2)}</pre>
+          <p style="margin-top: var(--sp-2)"><strong>Timestamp:</strong> ${result?.timestamp ? new Date(result.timestamp).toLocaleString() : 'Desconegut'}</p>
+        </div>
+      `, false)}
+    </div>
+  `;
+}
+
+function renderAuditSequential(audit, activity, result) {
   return `
     <!-- Top: Audit Report -->
     <div class="audit-report-section">
@@ -160,6 +239,8 @@ function renderAuditSequential(audit, activity) {
         <div style="margin-top: var(--sp-6);">
           ${audit.millores?.length ? renderAccordion('💡 Propostes de millora', renderImprovements(audit.millores), true) : ''}
         </div>
+        
+        ${renderTechnicalLog(result)}
       </div>
     </div>
 
@@ -167,7 +248,7 @@ function renderAuditSequential(audit, activity) {
     <div class="modified-proposal-section" style="margin-top: var(--sp-12);">
       <h3 class="column-title">🎯 Proposta Modificada</h3>
       <div class="result-layout split-view">
-        ${activity ? renderGenerateSplit(activity) : '<p style="text-align:center; opacity: 0.5; padding: var(--sp-10);">Generant proposta millorada...</p>'}
+        ${activity ? renderGenerateSplit(activity, null, result) : '<p style="text-align:center; opacity: 0.5; padding: var(--sp-10);">Generant proposta millorada...</p>'}
       </div>
     </div>
   `;
@@ -230,23 +311,24 @@ function renderRoleMetric(role, level = 0, label = "Protagonisme") {
 function renderSequence(seq) {
   if (!Array.isArray(seq)) return '';
   return `
-    <div class="phase-windows-container">
+    <div class="phase-windows-container" style="gap: var(--sp-4);">
       ${seq.map((fase, i) => {
-    // Use AI-provided proto levels or fall back to mock logic
-    const docProto = fase.proto?.doc ?? (fase.docent?.length > 100 ? 80 : 50);
-    const aluProto = fase.proto?.alu ?? (fase.alumne?.length > 100 ? 90 : 40);
-    const iaProto = fase.proto?.ia ?? (fase.usaIA ? 70 : 10);
+    const docProto = fase.proto?.doc ?? 50;
+    const aluProto = fase.proto?.alu ?? 50;
+    const iaProto = fase.proto?.ia ?? (fase.usaIA ? 30 : 0);
 
-    return `
-        <div class="phase-window" id="phase-${i}">
-          <div class="phase-window-header">
-            <div class="phase-info">
-              <span class="phase-badge">${i + 1}</span>
-              <span class="phase-title">${fase.fase || `Fase ${i + 1}`}</span>
-              ${fase.durada ? `<span class="phase-duration"><i data-lucide="clock" style="width:12px"></i> ${fase.durada}</span>` : ''}
-            </div>
-            ${fase.usaIA ? '<span class="badge badge-accent">🤖 IA Activa</span>' : ''}
-          </div>
+    const headerHtml = `
+      <div style="display: flex; align-items: center; gap: var(--sp-3); width: 100%;">
+        <span class="phase-badge" style="margin:0">${i + 1}</span>
+        <span style="flex: 1; font-weight: 700;">${fase.fase || `Fase ${i + 1}`}</span>
+        <span style="font-size: var(--fs-xs); opacity: 0.7; display: flex; align-items: center; gap: 4px;">
+          <i data-lucide="clock" style="width:12px"></i> ${fase.durada || '?'}
+        </span>
+        ${fase.usaIA ? '<span class="badge badge-accent" style="font-size: 10px; padding: 2px 8px;">🤖 IA</span>' : ''}
+      </div>
+    `;
+
+    const phaseContent = `
           <div class="phase-roles-grid">
             <div class="role-sector">
               <div class="role-label"><i data-lucide="user"></i> Docent</div>
@@ -262,36 +344,28 @@ function renderSequence(seq) {
               <div class="role-label"><i data-lucide="bot"></i> IA</div>
               <div class="role-content">
                 ${parseList(fase.ia) || (fase.usaIA ? 'Suport actiu' : 'Sense IA')}
-                ${fase.prompt_alumne ? `<div class="seq-prompt">"${fase.prompt_alumne}"</div>` : ''}
               </div>
               ${renderRoleMetric('ia', iaProto)}
             </div>
           </div>
-          <div class="phase-footer">
-            <button class="pedagogical-toggle" data-phase="${i}">
-              <i data-lucide="graduation-cap"></i>
-              <span>Justificació Pedagògica</span>
-              <i data-lucide="chevron-down" class="chevron"></i>
-            </button>
-          </div>
-          <div class="pedagogical-panel hidden" id="ped-panel-${i}">
-            <div class="ped-content">
-              ${fase.referencia || 'Referència contextual no disponible.'}
+          <div class="phase-footer" style="background: var(--c-surface-2); border-radius: 0 0 var(--r-md) var(--r-md);">
+            <div class="pedagogical-panel-inline" style="padding: var(--sp-4); font-size: var(--fs-sm); font-style: italic; color: var(--c-text-secondary);">
+              <strong>Justificació:</strong> ${fase.referencia || ''}
             </div>
           </div>
-        </div>
-      `;
+    `;
+
+    return renderAccordion(headerHtml, phaseContent, i === 0);
   }).join('')}
     </div>
   `;
 }
 
 function renderAccordion(title, content, openByDefault = false) {
-  const label = title.replace(/^\S+\s*/, '');
   return `
     <div class="accordion ${openByDefault ? 'open' : ''}">
       <button class="accordion-header">
-        <span class="accordion-title">${label}</span>
+        <span class="accordion-title">${title}</span>
         <i data-lucide="chevron-down" class="accordion-chevron"></i>
       </button>
       <div class="accordion-body result-content">${content}</div>

@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 
 <body>
@@ -45,6 +45,7 @@
           <label class="settings-label" id="sidebar-api-label"><i data-lucide="key"></i> API Key</label>
           <div class="settings-api-input">
             <input type="password" id="sidebar-api-key" placeholder="AIzaSy..." />
+            <button id="sidebar-api-test" class="btn-test" title="Prova la connexió"><i data-lucide="zap"></i></button>
             <button id="sidebar-api-save" title="Desa"><i data-lucide="check"></i></button>
           </div>
           <div id="sidebar-api-help" class="form-hint" style="margin-top: 4px;"></div>
@@ -102,7 +103,7 @@
     </div>
   </div>
 
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 
 </html>
