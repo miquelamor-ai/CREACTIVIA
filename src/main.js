@@ -240,7 +240,7 @@ async function handleGenerate(formData) {
 // ==========================================
 // 5. AUDITAR (Amb Doble RAG corregit)
 // ==========================================
-// --- AUDITAR (Handle Audit) - VERSIÓ QUE FORÇA LA MILLORA ---
+// --- AUDITAR (Handle Audit) - VERSIÓ MESTRA ---
 async function handleAudit(params) {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -249,50 +249,59 @@ async function handleAudit(params) {
         return;
     }
 
-    // 1. Mostrem Loading
-    showLoading('Auditant activitat...', 'Analitzant criteris i generant millora...');
+    showLoading('Auditant activitat...', 'Analitzant criteris pedagògics complets...');
 
     try {
-        let promptContext = "";
+        let contextAudit = "";
 
-        // 2. RAG (Només si fem servir Gemini)
+        // 1. RAG AVANÇAT (Gemini)
         if (sidebarProvider.value === 'gemini') {
-            const queryContingut = `${params.materia || ''} ${params.etapa || ''}`;
-            const contextContingut = await cercarAlCurriculum(queryContingut, apiKey);
             
-            const queryQualitat = "criteris qualitat pedagògica avaluació competencial disseny universal aprenentatge dua";
-            const contextQualitat = await cercarAlCurriculum(queryQualitat, apiKey);
+            // A. Context de la matèria (per saber si és adequada)
+            const queryContingut = `${params.materia || ''} ${params.etapa || ''} currículum oficial`;
+            const contextMateria = await cercarAlCurriculum(queryContingut, apiKey);
             
-            if (contextContingut) promptContext += `\n\n[CONTEXT CURRICULAR]:\n${contextContingut}\n`;
-            if (contextQualitat) promptContext += `\n\n[CRITERIS DE QUALITAT]:\n${contextQualitat}\n`;
+            // B. Context PEDAGÒGIC COMPLET (Tots els teus documents)
+            // Afegim Inclusió, DUA, Fricció, Model 4D, Rols IA, Disseny Instruccional...
+            const queryPedagogia = "inclusió educativa disseny universal aprenentatge dua fricció cognitiva productiva model 4d mihia rols interacció ia disseny instruccional avaluació formativa pedagogia ignasiana";
+            const contextPedagogic = await cercarAlCurriculum(queryPedagogia, apiKey);
+            
+            if (contextMateria) contextAudit += `\n[CONTEXT CURRICULAR]:\n${contextMateria}\n`;
+            if (contextPedagogic) contextAudit += `\n[MARCS TEÒRICS I CRITERIS DE QUALITAT]:\n${contextPedagogic}\n`;
         }
 
-        // 3. INSTRUCCIÓ CLAU PER A LA MILLORA
-        // Aquí està el truc: Injectem una ordre directa perquè no s'oblidi de fer la proposta.
-        const instruccioMillora = `
+        // 2. INSTRUCCIÓ DE MILLORA OBLIGATÒRIA
+        const instruccioFinal = `
+        \n\n---------------------------------------------------
+        INFORMACIÓ DE SUPORT PER A L'AUDITORIA:
+        ${contextAudit}
         ---------------------------------------------------
-        INSTRUCCIONS PER A L'AUDITORIA:
-        1. Avalua l'activitat segons els criteris anteriors.
-        2. Detecta els punts febles.
-        3. IMPORTANT: GENERA UNA "PROPOSTA MILLORADA" COMPLETA aplicant les correccions detectades.
-           La resposta ha de tenir format JSON amb els camps: "analysis" (la crítica) i "improvedProposal" (l'activitat millorada).
+        INSTRUCCIONS CRÍTIQUES PER A LA GENERACIÓ:
+        1. Analitza l'activitat basant-te en els marcs teòrics anteriors (DUA, Inclusió, Fricció, etc.).
+        2. IMPRESCINDIBLE: Genera una versió TOTALMENT REESCRITA I MILLORADA de l'activitat.
+        3. La teva resposta HA DE SER UN JSON vàlid amb aquests camps exactes:
+           - "analysis": { "strengths": [], "weaknesses": [], "suggestions": [] }
+           - "improvedActivity": { "title": "...", "description": "...", "steps": [...] }
         ---------------------------------------------------
         `;
 
-        // Afegim tot això a la descripció que l'usuari ha enganxat
-        params.activityDescription = (params.activityDescription || '') + 
-            (promptContext ? `\n\n--- INFORMACIÓ DE SUPORT ---\n${promptContext}` : "") + 
-            instruccioMillora;
+        // Injectem tot això dins del paràmetre que l'orquestrador envia a la IA
+        params.activityDescription = (params.activityDescription || '') + instruccioFinal;
 
-        console.log("📝 RAG Auditoria: Instruccions de millora injectades.");
+        console.log("📝 RAG Auditoria: Context complet (DUA + Inclusió + Pedagogia) injectat.");
 
-        loadingText.textContent = 'Generant la versió millorada...';
+        loadingText.textContent = 'Generant la proposta millorada...';
         
-        // 4. Cridem l'orquestrador
+        // 3. Cridem l'orquestrador
         const result = await orchestrate('audit', params);
         
         if (!result || result.error) {
-            throw new Error(result?.error || "La IA no ha retornat cap resultat vàlid.");
+            throw new Error(result?.error || "La IA no ha retornat cap resultat.");
+        }
+
+        // 4. Verificació de seguretat
+        if (!result.improvedActivity && !result.improvedProposal) {
+            console.warn("⚠️ Alerta: La IA ha fet l'auditoria però no ha retornat la millora.");
         }
 
         showResult(result);
