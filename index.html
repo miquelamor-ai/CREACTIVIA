@@ -10,7 +10,7 @@
     <!-- Icones -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 1. CONNEXIÓ SUPABASE (L'únic que afegim al head) -->
+    <!-- 1. LLIBRERIA SUPABASE (L'únic que afegim al head) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -23,32 +23,30 @@
                 <p class="tagline">IA PER A DOCENTS</p>
             </div>
 
-            <!-- Aquí és on hi havia el problema de disseny -->
-            <div class="sidebar-settings">
-                <div class="sidebar-section">
-                    <label id="sidebar-api-label" class="section-label">
-                        <i data-lucide="key"></i> Google Key
-                    </label>
-                    <div class="api-input-group">
-                        <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
-                        <button id="sidebar-api-save" class="icon-btn" title="Desar Clau"><i data-lucide="save"></i></button>
-                        <button id="sidebar-api-test" class="icon-btn" title="Provar Connexió"><i data-lucide="zap"></i></button>
-                    </div>
-                    <small id="sidebar-api-help" class="help-text"></small>
+            <!-- Hem tret la caixa 'sidebar-settings' perquè el teu CSS no la coneix -->
+            <div class="sidebar-section">
+                <label id="sidebar-api-label" class="section-label">
+                    <i data-lucide="key"></i> Google Key
+                </label>
+                <div class="api-input-group">
+                    <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
+                    <button id="sidebar-api-save" class="icon-btn" title="Desar"><i data-lucide="save"></i></button>
+                    <button id="sidebar-api-test" class="icon-btn" title="Provar"><i data-lucide="zap"></i></button>
                 </div>
+                <small id="sidebar-api-help" class="help-text"></small>
+            </div>
 
-                <div class="sidebar-section">
-                    <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
-                    <select id="sidebar-provider" class="sidebar-select">
-                        <option value="gemini">Google Gemini</option>
-                        <option value="openrouter">OpenRouter</option>
-                    </select>
-                </div>
+            <div class="sidebar-section">
+                <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
+                <select id="sidebar-provider" class="sidebar-select">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openrouter">OpenRouter</option>
+                </select>
+            </div>
 
-                <div class="sidebar-section">
-                    <label class="section-label"><i data-lucide="layers"></i> Model</label>
-                    <select id="sidebar-model" class="sidebar-select"></select>
-                </div>
+            <div class="sidebar-section">
+                <label class="section-label"><i data-lucide="layers"></i> Model</label>
+                <select id="sidebar-model" class="sidebar-select"></select>
             </div>
 
             <nav class="main-nav">
@@ -93,7 +91,7 @@
         </div>
     </div>
 
-    <!-- 2. EL TEU SCRIPT (Al final de tot) -->
+    <!-- 2. EL TEU SCRIPT (Al final) -->
     <script type="module" src="./src/main.js"></script>
 
 </body>
