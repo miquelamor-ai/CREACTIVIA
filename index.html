@@ -4,41 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CREACTIVIA — Disseny d'Activitats amb IA</title>
-    
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Icones -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- 1. LLIBRERIA SUPABASE (L'únic que afegim al head) -->
+    <!-- SUPABASE -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
     <div class="app-container">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">CREACTIVIA</h1>
                 <p class="tagline">IA PER A DOCENTS</p>
             </div>
 
-            <!-- Hem tret la caixa 'sidebar-settings' perquè el teu CSS no la coneix -->
             <div class="sidebar-section">
                 <label id="sidebar-api-label" class="section-label">
-                    <i data-lucide="key"></i> Google Key
+                    <i data-lucide="key"></i> Clau API
                 </label>
                 <div class="api-input-group">
-                    <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
-                    <button id="sidebar-api-save" class="icon-btn" title="Desar"><i data-lucide="save"></i></button>
-                    <button id="sidebar-api-test" class="icon-btn" title="Provar"><i data-lucide="zap"></i></button>
+                    <input type="password" id="sidebar-api-key" placeholder="Introdueix la clau...">
+                    <button id="sidebar-api-save" title="Desar"><i data-lucide="save"></i></button>
+                    <button id="sidebar-api-test" title="Provar"><i data-lucide="zap"></i></button>
                 </div>
                 <small id="sidebar-api-help" class="help-text"></small>
             </div>
 
             <div class="sidebar-section">
                 <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
-                <select id="sidebar-provider" class="sidebar-select">
+                <select id="sidebar-provider">
                     <option value="gemini">Google Gemini</option>
                     <option value="openrouter">OpenRouter</option>
                 </select>
@@ -46,53 +39,31 @@
 
             <div class="sidebar-section">
                 <label class="section-label"><i data-lucide="layers"></i> Model</label>
-                <select id="sidebar-model" class="sidebar-select"></select>
+                <select id="sidebar-model"></select>
             </div>
 
             <nav class="main-nav">
-                <button class="nav-item active" data-mode="generate">
-                    <i data-lucide="sparkles"></i> Generar
-                </button>
-                <button class="nav-item" data-mode="audit">
-                    <i data-lucide="shield-check"></i> Auditar
-                </button>
-                <button class="nav-item" data-mode="history">
-                    <i data-lucide="history"></i> Historial
-                </button>
+                <button class="nav-item active" data-mode="generate"><i data-lucide="sparkles"></i> Generar</button>
+                <button class="nav-item" data-mode="audit"><i data-lucide="shield-check"></i> Auditar</button>
+                <button class="nav-item" data-mode="history"><i data-lucide="history"></i> Historial</button>
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <section id="generate-section" class="section active">
-                <div id="wizard-container"></div>
-            </section>
-
-            <section id="audit-section" class="section">
-                <div id="auditor-container"></div>
-            </section>
-
-            <section id="history-section" class="section">
-                <div id="history-container"></div>
-            </section>
-
-            <section id="result-section" class="section hidden">
-                <div id="result-container"></div>
-            </section>
+            <section id="generate-section" class="section active"><div id="wizard-container"></div></section>
+            <section id="audit-section" class="section"><div id="auditor-container"></div></section>
+            <section id="history-section" class="section"><div id="history-container"></div></section>
+            <section id="result-section" class="section hidden"><div id="result-container"></div></section>
         </main>
 
-        <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay hidden">
             <div class="loading-content">
                 <div class="spinner"></div>
-                <p class="loading-text">Generant proposta pedagògica...</p>
-                <p class="loading-sub">Consultant marcs teòrics i dissenyant l'activitat</p>
+                <p class="loading-text">Generant proposta...</p>
+                <p class="loading-sub">Consultant currículum i marcs teòrics</p>
             </div>
         </div>
     </div>
-
-    <!-- 2. EL TEU SCRIPT (Al final) -->
     <script type="module" src="./src/main.js"></script>
-
 </body>
 </html>
