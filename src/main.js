@@ -8,6 +8,63 @@ import { renderResult } from './ui/result-view.js';
 import { addToHistory } from './utils/history.js';
 import { renderHistoryView } from './ui/history-view.js';
 
+// 2. CONFIGURACIÓ SUPABASE RAG
+const SUPABASE_URL = 'https://qlftykfqjwaxucoeqcjv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZnR5a2ZxandheHVjb2VxY2p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MjkxNjQsImV4cCI6MjA4NzAwNTE2NH0.m1NyE3ViywXKBNEWkh1nrwnhToiH8Y26HGY8GT5-f_8';
+
+// Inicialitzem el client de Supabase
+// (Es carrega des del script de l'index.html)
+const supabaseClient = typeof supabase !== 'undefined' 
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
+    : null;
+
+// Funció que busca informació rellevant al currículum a Supabase
+async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
+    if (!textUsuari || !apiKeyUsuari || !supabaseClient) return "";
+    console.log("🔍 Buscant al currículum per:", textUsuari);
+
+    try {
+        // A. Convertim la petició de l'usuari en un vector (Embedding) usant la seva clau
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKeyUsuari}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "models/gemini-embedding-001",
+                    content: { parts: [{ text: textUsuari }] },
+                    outputDimensionality: 768
+                })
+            }
+        );
+        
+        if (!response.ok) throw new Error("Error en l'embedding de Google");
+        
+        const data = await response.json();
+        const vectorUsuari = data.embedding.values;
+
+        // B. Cridem a la funció SQL de Supabase per trobar fragments similars
+        const { data: documents, error } = await supabaseClient.rpc('match_documents', {
+            query_embedding: vectorUsuari,
+            match_threshold: 0.4, 
+            match_count: 5
+        });
+
+        if (error) throw error;
+
+        if (documents && documents.length > 0) {
+            console.log(`✅ Trobats ${documents.length} fragments de context.`);
+            return documents.map(d => d.content).join("\n\n---\n\n");
+        }
+        
+        console.log("⚠️ No s'ha trobat context específic.");
+        return "";
+    } catch (err) {
+        console.error("Error en RAG:", err);
+        return "";
+    }
+}
+
 // --- State ---
 let currentMode = 'generate';
 
@@ -41,7 +98,6 @@ function init() {
     renderGeneratorForm(wizardContainer, handleGenerate);
     renderAuditorForm(auditorContainer, handleAudit);
 
-    // Initialize icons
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -51,7 +107,7 @@ function setupSidebarSettings() {
 
     const updateApiKeyUI = () => {
         const provider = sidebarProvider.value;
-        const key = getApiKey(); // Uses current CONFIG.PROVIDER
+        const key = getApiKey();
         sidebarApiKey.value = key || '';
 
         if (provider === 'gemini') {
@@ -69,14 +125,11 @@ function setupSidebarSettings() {
     const populateModels = () => {
         const models = getAvailableModels();
         const currentModel = getModel();
-
-        // Ensure currentModel is in the list if it's a custom one not found in presets
         const isKnown = models.some(m => m.id === currentModel);
         const displayModels = [...models];
         if (!isKnown && currentModel && currentModel !== 'custom') {
             displayModels.push({ id: currentModel, name: `Personalitzat (${currentModel})` });
         }
-
         sidebarModel.innerHTML = displayModels.map(m => `
             <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
                 ${m.name}
@@ -87,7 +140,6 @@ function setupSidebarSettings() {
     updateApiKeyUI();
     populateModels();
 
-    // Save Handlers
     sidebarApiSave.addEventListener('click', () => {
         const newKey = sidebarApiKey.value.trim();
         if (newKey) {
@@ -99,20 +151,15 @@ function setupSidebarSettings() {
     sidebarApiTest.addEventListener('click', async () => {
         const key = sidebarApiKey.value.trim();
         const provider = sidebarProvider.value;
-
         if (!key) {
             showSuccess('❗ Introdueix una clau primer');
             return;
         }
-
         sidebarApiTest.classList.add('loading');
         sidebarApiTest.innerHTML = '<i data-lucide="loader-2"></i>';
-        if (window.lucide) window.lucide.createIcons();
-
         try {
             const result = await testConnection(provider, key);
             sidebarApiTest.classList.remove('loading');
-
             if (result.ok) {
                 sidebarApiTest.classList.add('success');
                 sidebarApiTest.innerHTML = '<i data-lucide="check"></i>';
@@ -120,18 +167,13 @@ function setupSidebarSettings() {
             } else {
                 sidebarApiTest.classList.add('error');
                 sidebarApiTest.innerHTML = '<i data-lucide="x"></i>';
-                alert(`Error de connexió: ${result.message}`);
+                alert(`Error: ${result.message}`);
             }
         } catch (err) {
-            sidebarApiTest.classList.remove('loading');
-            sidebarApiTest.classList.add('error');
-            sidebarApiTest.innerHTML = '<i data-lucide="alert-triangle"></i>';
+            sidebarApiTest.classList.remove('loading', 'error');
             alert(`Error: ${err.message}`);
         }
-
         if (window.lucide) window.lucide.createIcons();
-
-        // Reset icon after 3 seconds
         setTimeout(() => {
             sidebarApiTest.classList.remove('success', 'error');
             sidebarApiTest.innerHTML = '<i data-lucide="zap"></i>';
@@ -151,67 +193,64 @@ function setupSidebarSettings() {
 }
 
 function showSuccess(msg) {
-    // Simple toast or alert replacement
     const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed; bottom: 20px; left: 20px; 
-        background: var(--c-primary); color: white; 
-        padding: 10px 20px; border-radius: var(--r-md);
-        font-size: 12px; font-weight: 700; z-index: 1000;
-        box-shadow: var(--shadow-lg); transition: all 0.3s ease;
-    `;
+    toast.style.cssText = `position: fixed; bottom: 20px; left: 20px; background: var(--c-primary); color: white; padding: 10px 20px; border-radius: var(--r-md); font-size: 12px; font-weight: 700; z-index: 1000; box-shadow: var(--shadow-lg);`;
     toast.textContent = msg;
     document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 2000);
+    setTimeout(() => toast.remove(), 2300);
 }
 
-// --- Navigation ---
 function setupNavigation() {
     navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const mode = item.dataset.mode;
-            switchMode(mode);
-        });
+        item.addEventListener('click', () => switchMode(item.dataset.mode));
     });
 }
 
 function switchMode(mode) {
     currentMode = mode;
     navItems.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-
     generateSection.classList.toggle('active', mode === 'generate');
     auditSection.classList.toggle('active', mode === 'audit');
     historySection.classList.toggle('active', mode === 'history');
     resultSection.classList.add('hidden');
-
-    if (mode === 'history') {
-        renderHistoryView(historyContainer, (historyItem) => {
-            // View result from history
-            showResult(historyItem, false); // false = don't save again
-        });
-    }
+    if (mode === 'history') renderHistoryView(historyContainer, (item) => showResult(item, false));
 }
 
-// --- Handlers ---
+// --- HANDLER GENERATE AMB RAG INTEGRAT ---
 async function handleGenerate(formData) {
-    if (!getApiKey()) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
         showSuccess('❗ Necessites una Clau API');
         sidebarApiKey.focus();
         return;
     }
 
-    showLoading('Generant proposta pedagògica...', 'Consultant marcs teòrics i dissenyant l\'activitat');
+    showLoading('Analitzant currículum...', 'Buscant marcs teòrics i sabers a Supabase');
 
     try {
+        // 1. Busquem context al currículum (RAG)
+        const queryRAG = `${formData.materia || ''} ${formData.tema || ''} ${formData.etapa || ''}`;
+        const contextCurricular = await cercarAlCurriculum(queryRAG, apiKey);
+
+        // 2. Si hi ha context, l'injectem al formulari abans d'enviar a l'orquestrador
+        if (contextCurricular) {
+            console.log("📝 Injectant context oficial al prompt...");
+            formData.contextOficial = contextCurricular; 
+            // Nota: L'orquestrador ha de saber llegir formData.contextOficial 
+            // O pots concatenar-lo al tema:
+            formData.tema = (formData.tema || '') + `\n\n[CONTEXT CURRICULAR OFICIAL]:\n${contextCurricular}`;
+        }
+
+        loadingText.textContent = 'Generant proposta pedagògica...';
+        loadingSub.textContent = 'Dissenyant l\'activitat amb IA';
+
+        // 3. Executem la generació normal
         const result = await orchestrate('generate', formData);
         showResult(result);
+
     } catch (error) {
         hideLoading();
         alert(`Error: ${error.message}`);
-        console.error('Generation error:', error);
     }
 }
 
@@ -221,20 +260,16 @@ async function handleAudit(params) {
         sidebarApiKey.focus();
         return;
     }
-
-    showLoading('Auditant l\'activitat...', 'Analitzant criteris pedagògics i dissenyant la millora');
-
+    showLoading('Auditant l\'activitat...', 'Analitzant criteris de qualitat');
     try {
         const result = await orchestrate('audit', params);
         showResult(result);
     } catch (error) {
         hideLoading();
         alert(`Error: ${error.message}`);
-        console.error('Audit error:', error);
     }
 }
 
-// --- UI Helpers ---
 function showLoading(text, sub) {
     loadingText.textContent = text;
     loadingSub.textContent = sub;
@@ -247,30 +282,18 @@ function hideLoading() {
 
 function showResult(result, saveToHistory = true) {
     hideLoading();
-
-    // Auto-save to history if it's a new result
     if (saveToHistory && !result.error) {
         const savedItem = addToHistory(result);
-        if (savedItem) result.id = savedItem.id; // Assign ID
+        if (savedItem) result.id = savedItem.id;
     }
-
-    // Hide input sections, show result
     generateSection.classList.remove('active');
     auditSection.classList.remove('active');
     historySection.classList.remove('active');
     resultSection.classList.remove('hidden');
-
     renderResult(resultContainer, result, () => {
-        // On back: show input again
         resultSection.classList.add('hidden');
-        // If we came from history, go back to history. Else go back to current mode.
-        if (!saveToHistory) {
-            switchMode('history');
-        } else {
-            switchMode(currentMode);
-        }
+        saveToHistory ? switchMode(currentMode) : switchMode('history');
     });
 }
 
-// --- Start ---
 init();
