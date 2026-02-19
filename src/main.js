@@ -26,7 +26,6 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
     } catch (e) { return ""; }
 }
 
-let currentMode = 'generate';
 const navItems = document.querySelectorAll('.nav-item');
 const generateSection = document.getElementById('generate-section');
 const auditSection = document.getElementById('audit-section');
@@ -52,7 +51,6 @@ function init() {
     renderGeneratorForm(wizardContainer, handleGenerate);
     renderAuditorForm(auditorContainer, handleAudit);
     if (window.lucide) window.lucide.createIcons();
-    console.log("🚀 App Inicialitzada correctament");
 }
 
 function setupSidebarSettings() {
@@ -65,23 +63,22 @@ function setupSidebarSettings() {
         if (window.lucide) window.lucide.createIcons();
     };
     updateUI();
-    sidebarApiSave.addEventListener('click', () => { setApiKey(sidebarApiKey.value); alert('Desat'); });
+    sidebarApiSave.addEventListener('click', () => { setApiKey(sidebarApiKey.value); alert('Clau desada'); });
     sidebarProvider.addEventListener('change', () => { setProvider(sidebarProvider.value); updateUI(); });
     sidebarModel.addEventListener('change', () => setModel(sidebarModel.value));
 }
 
 function setupNavigation() {
-    navItems.forEach(item => item.addEventListener('click', () => switchMode(item.dataset.mode)));
-}
-
-function switchMode(mode) {
-    currentMode = mode;
-    navItems.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-    generateSection.classList.toggle('active', mode === 'generate');
-    auditSection.classList.toggle('active', mode === 'audit');
-    historySection.classList.toggle('active', mode === 'history');
-    resultSection.classList.add('hidden');
-    if (mode === 'history') renderHistoryView(historyContainer, (item) => showResult(item, false));
+    navItems.forEach(item => item.addEventListener('click', () => {
+        navItems.forEach(t => t.classList.remove('active'));
+        item.classList.add('active');
+        const mode = item.dataset.mode;
+        generateSection.classList.toggle('active', mode === 'generate');
+        auditSection.classList.toggle('active', mode === 'audit');
+        historySection.classList.toggle('active', mode === 'history');
+        resultSection.classList.add('hidden');
+        if (mode === 'history') renderHistoryView(historyContainer, (item) => showResult(item, false));
+    }));
 }
 
 async function handleGenerate(formData) {
@@ -90,7 +87,7 @@ async function handleGenerate(formData) {
     loadingOverlay.classList.remove('hidden');
     try {
         const context = await cercarAlCurriculum(`${formData.materia} ${formData.tema}`, key);
-        if (context) formData.tema += `\n\n[CONTEXT]:\n${context}`;
+        if (context) formData.tema += `\n\n[CONTEXT CURRICULAR]:\n${context}`;
         const result = await orchestrate('generate', formData);
         showResult(result);
     } catch (e) { alert(e.message); loadingOverlay.classList.add('hidden'); }
@@ -108,7 +105,10 @@ function showResult(result, save = true) {
     auditSection.classList.remove('active');
     historySection.classList.remove('active');
     resultSection.classList.remove('hidden');
-    renderResult(resultContainer, result, () => { resultSection.classList.add('hidden'); save ? switchMode(currentMode) : switchMode('history'); });
+    renderResult(resultContainer, result, () => {
+        resultSection.classList.add('hidden');
+        generateSection.classList.add('active');
+    });
 }
 
 init();
