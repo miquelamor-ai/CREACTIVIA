@@ -1,4 +1,4 @@
-// CREACTIVITAT — Main Entry Point
+// 1. PRIMER ELS IMPORTS (A DALT DE TOT, SENSE EXCEPCIÓ)
 import { getApiKey, setApiKey, getModel, setModel, getAvailableModels, setProvider, CONFIG } from './config.js';
 import { testConnection } from './api/llm-provider.js';
 import { orchestrate } from './skills/orchestrator.js';
