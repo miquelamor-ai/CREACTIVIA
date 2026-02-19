@@ -10,7 +10,7 @@
     <!-- Icones -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 1. LLIBRERIA SUPABASE (L'únic que afegim al head) -->
+    <!-- 1. CONNEXIÓ SUPABASE (L'únic que afegim al head) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -20,9 +20,10 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">CREACTIVIA</h1>
-                <p class="tagline">IA per a docents</p>
+                <p class="tagline">IA PER A DOCENTS</p>
             </div>
 
+            <!-- Aquí és on hi havia el problema de disseny -->
             <div class="sidebar-settings">
                 <div class="sidebar-section">
                     <label id="sidebar-api-label" class="section-label">
@@ -30,8 +31,8 @@
                     </label>
                     <div class="api-input-group">
                         <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
-                        <button id="sidebar-api-save" class="icon-btn" title="Desar"><i data-lucide="save"></i></button>
-                        <button id="sidebar-api-test" class="icon-btn" title="Provar"><i data-lucide="zap"></i></button>
+                        <button id="sidebar-api-save" class="icon-btn" title="Desar Clau"><i data-lucide="save"></i></button>
+                        <button id="sidebar-api-test" class="icon-btn" title="Provar Connexió"><i data-lucide="zap"></i></button>
                     </div>
                     <small id="sidebar-api-help" class="help-text"></small>
                 </div>
