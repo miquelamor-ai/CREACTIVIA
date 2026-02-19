@@ -17,32 +17,34 @@
                 <p class="tagline">IA PER A DOCENTS</p>
             </div>
 
-            <div class="sidebar-section">
-                <label id="sidebar-api-label" class="section-label">
-                    <i data-lucide="key"></i> Clau API
-                </label>
-                <div class="api-input-group">
-                    <input type="password" id="sidebar-api-key" placeholder="Introdueix la clau...">
-                    <button id="sidebar-api-save" title="Desar"><i data-lucide="save"></i></button>
-                    <button id="sidebar-api-test" title="Provar"><i data-lucide="zap"></i></button>
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <label id="sidebar-api-label" class="section-label">
+                        <i data-lucide="key"></i> Clau API
+                    </label>
+                    <div class="api-input-group">
+                        <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
+                        <button id="sidebar-api-save" title="Desar"><i data-lucide="save"></i></button>
+                        <button id="sidebar-api-test" title="Provar"><i data-lucide="zap"></i></button>
+                    </div>
+                    <small id="sidebar-api-help" class="help-text"></small>
                 </div>
-                <small id="sidebar-api-help" class="help-text"></small>
+
+                <div class="sidebar-section">
+                    <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
+                    <select id="sidebar-provider">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openrouter">OpenRouter</option>
+                    </select>
+                </div>
+
+                <div class="sidebar-section">
+                    <label class="section-label"><i data-lucide="layers"></i> Model</label>
+                    <select id="sidebar-model"></select>
+                </div>
             </div>
 
-            <div class="sidebar-section">
-                <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
-                <select id="sidebar-provider">
-                    <option value="gemini">Google Gemini</option>
-                    <option value="openrouter">OpenRouter</option>
-                </select>
-            </div>
-
-            <div class="sidebar-section">
-                <label class="section-label"><i data-lucide="layers"></i> Model</label>
-                <select id="sidebar-model"></select>
-            </div>
-
-            <nav class="main-nav">
+            <nav class="sidebar-footer">
                 <button class="nav-item active" data-mode="generate"><i data-lucide="sparkles"></i> Generar</button>
                 <button class="nav-item" data-mode="audit"><i data-lucide="shield-check"></i> Auditar</button>
                 <button class="nav-item" data-mode="history"><i data-lucide="history"></i> Historial</button>
