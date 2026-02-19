@@ -240,6 +240,7 @@ async function handleGenerate(formData) {
 // ==========================================
 // 5. AUDITAR (Amb Doble RAG corregit)
 // ==========================================
+// --- AUDITAR (Handle Audit) - VERSIÓ QUE FORÇA LA MILLORA ---
 async function handleAudit(params) {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -249,35 +250,45 @@ async function handleAudit(params) {
     }
 
     // 1. Mostrem Loading
-    showLoading('Auditant activitat...', 'Cercant criteris de validació pedagògica...');
+    showLoading('Auditant activitat...', 'Analitzant criteris i generant millora...');
 
     try {
-        // 2. Fem el RAG per l'Auditoria
+        let promptContext = "";
+
+        // 2. RAG (Només si fem servir Gemini)
         if (sidebarProvider.value === 'gemini') {
+            const queryContingut = `${params.materia || ''} ${params.etapa || ''}`;
+            const contextContingut = await cercarAlCurriculum(queryContingut, apiKey);
             
-            // Busquem criteris de qualitat i avaluació
             const queryQualitat = "criteris qualitat pedagògica avaluació competencial disseny universal aprenentatge dua";
             const contextQualitat = await cercarAlCurriculum(queryQualitat, apiKey);
             
-            let promptContext = "";
-            if (contextQualitat) {
-                promptContext += `\n\n[CRITERIS OFICIALS DE VALIDACIÓ DE QUALITAT]:\n${contextQualitat}\n`;
-            }
-
-            // === CORRECCIÓ CLAU ===
-            // Injectem el context DINS de la 'activityDescription'.
-            // Així l'Orquestrador entén que ha de validar l'activitat fent servir aquests criteris.
-            if (promptContext) {
-                params.activityDescription = (params.activityDescription || '') + 
-                    `\n\n--- UTILITZA AQUESTS CRITERIS PER A L'AUDITORIA ---\n${promptContext}\n------------------------------------------`;
-                
-                console.log("📝 RAG Auditoria: Context injectat a la descripció.");
-            }
+            if (contextContingut) promptContext += `\n\n[CONTEXT CURRICULAR]:\n${contextContingut}\n`;
+            if (contextQualitat) promptContext += `\n\n[CRITERIS DE QUALITAT]:\n${contextQualitat}\n`;
         }
 
-        loadingText.textContent = 'Generant informe de millora...';
+        // 3. INSTRUCCIÓ CLAU PER A LA MILLORA
+        // Aquí està el truc: Injectem una ordre directa perquè no s'oblidi de fer la proposta.
+        const instruccioMillora = `
+        ---------------------------------------------------
+        INSTRUCCIONS PER A L'AUDITORIA:
+        1. Avalua l'activitat segons els criteris anteriors.
+        2. Detecta els punts febles.
+        3. IMPORTANT: GENERA UNA "PROPOSTA MILLORADA" COMPLETA aplicant les correccions detectades.
+           La resposta ha de tenir format JSON amb els camps: "analysis" (la crítica) i "improvedProposal" (l'activitat millorada).
+        ---------------------------------------------------
+        `;
+
+        // Afegim tot això a la descripció que l'usuari ha enganxat
+        params.activityDescription = (params.activityDescription || '') + 
+            (promptContext ? `\n\n--- INFORMACIÓ DE SUPORT ---\n${promptContext}` : "") + 
+            instruccioMillora;
+
+        console.log("📝 RAG Auditoria: Instruccions de millora injectades.");
+
+        loadingText.textContent = 'Generant la versió millorada...';
         
-        // 3. Cridem l'orquestrador
+        // 4. Cridem l'orquestrador
         const result = await orchestrate('audit', params);
         
         if (!result || result.error) {
