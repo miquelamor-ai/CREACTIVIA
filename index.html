@@ -1,109 +1,114 @@
 <!DOCTYPE html>
 <html lang="ca">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CREACTIVITAT — Generador d'Activitats amb IA</title>
-  <meta name="description"
-    content="Dissenya i audita activitats d'aula que integren la Intel·ligència Artificial, seguint marcs pedagògics rigorosos." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-    rel="stylesheet" />
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="./style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CREACTIVIA — Disseny d'Activitats amb IA</title>
+    
+    <!-- Estils -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Icones (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- 1. LLIBRERIA SUPABASE (Imprescindible per al RAG) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-
 <body>
-  <div id="app" class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="logo">CREACTIVITAT</h1>
-        <p class="tagline">IA & Pedagogia Studio</p>
-      </div>
 
-      <nav class="sidebar-nav">
-        <button class="nav-item active" data-mode="generate">
-          <i data-lucide="sparkles"></i>
-          <span class="nav-label">Genera</span>
-        </button>
-        <button class="nav-item" data-mode="audit">
-          <i data-lucide="shield-check"></i>
-          <span class="nav-label">Audita</span>
-        </button>
-        <button class="nav-item" data-mode="history">
-          <i data-lucide="history"></i>
-          <span class="nav-label">Historial</span>
-        </button>
-      </nav>
+    <div class="app-container">
+        <!-- Sidebar: Configuració -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">CREACTIVIA</h1>
+                <p class="tagline">IA per a docents</p>
+            </div>
 
-      <div class="sidebar-settings">
-        <div class="settings-group">
-          <label class="settings-label" id="sidebar-api-label"><i data-lucide="key"></i> API Key</label>
-          <div class="settings-api-input">
-            <input type="password" id="sidebar-api-key" placeholder="AIzaSy..." />
-            <button id="sidebar-api-test" class="btn-test" title="Prova la connexió"><i data-lucide="zap"></i></button>
-            <button id="sidebar-api-save" title="Desa"><i data-lucide="check"></i></button>
-          </div>
-          <div id="sidebar-api-help" class="form-hint" style="margin-top: 4px;"></div>
+            <div class="sidebar-section">
+                <label id="sidebar-api-label" class="section-label">
+                    <i data-lucide="key"></i> Clau API
+                </label>
+                <div class="api-input-group">
+                    <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
+                    <button id="sidebar-api-save" title="Desar Clau"><i data-lucide="save"></i></button>
+                    <button id="sidebar-api-test" title="Provar Connexió"><i data-lucide="zap"></i></button>
+                </div>
+                <small id="sidebar-api-help" class="help-text"></small>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
+                <select id="sidebar-provider">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openrouter">OpenRouter</option>
+                </select>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="section-label"><i data-lucide="layers"></i> Model</label>
+                <select id="sidebar-model">
+                    <!-- Es prioritza via JS -->
+                </select>
+            </div>
+
+            <nav class="main-nav">
+                <button class="nav-item active" data-mode="generate">
+                    <i data-lucide="sparkles"></i> Generar
+                </button>
+                <button class="nav-item" data-mode="audit">
+                    <i data-lucide="shield-check"></i> Auditar
+                </button>
+                <button class="nav-item" data-mode="history">
+                    <i data-lucide="history"></i> Historial
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Contingut Principal -->
+        <main class="main-content">
+            
+            <!-- SECCIÓ: GENERAR -->
+            <section id="generate-section" class="section active">
+                <div id="wizard-container">
+                    <!-- El formulari es renderitza via JS (renderGeneratorForm) -->
+                </div>
+            </section>
+
+            <!-- SECCIÓ: AUDITAR -->
+            <section id="audit-section" class="section">
+                <div id="auditor-container">
+                    <!-- Es renderitza via JS -->
+                </div>
+            </section>
+
+            <!-- SECCIÓ: HISTORIAL -->
+            <section id="history-section" class="section">
+                <div id="history-container">
+                    <!-- Es renderitza via JS -->
+                </div>
+            </section>
+
+            <!-- SECCIÓ: RESULTAT (Amagada per defecte) -->
+            <section id="result-section" class="section hidden">
+                <div id="result-container">
+                    <!-- Es renderitza via JS (renderResult) -->
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Loading Overlay (Pantalla de càrrega) -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p class="loading-text">Generant proposta pedagògica...</p>
+                <p class="loading-sub">Consultant marcs teòrics i dissenyant l'activitat</p>
+            </div>
         </div>
-        <div class="settings-group">
-          <label class="settings-label"><i data-lucide="cloud"></i> Proveïdor</label>
-          <select id="sidebar-provider" class="settings-select">
-            <option value="gemini">Google Gemini</option>
-            <option value="openai">OpenRouter (Qwen/Llama)</option>
-          </select>
-        </div>
-        <div class="settings-group">
-          <label class="settings-label"><i data-lucide="cpu"></i> Model</label>
-          <select id="sidebar-model" class="settings-select">
-            <!-- Models populated by main.js -->
-          </select>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Workspace -->
-    <div class="workspace">
-
-      <!-- Main Content -->
-      <main class="main-content">
-        <!-- Generate Mode -->
-        <section id="generate-section" class="mode-section active">
-          <div id="wizard-container"></div>
-        </section>
-
-        <!-- Audit Mode -->
-        <section id="audit-section" class="mode-section">
-          <div id="auditor-container"></div>
-        </section>
-
-        <!-- History Mode -->
-        <section id="history-section" class="mode-section">
-          <div id="history-container"></div>
-        </section>
-
-        <!-- Results -->
-        <section id="result-section" class="result-section hidden">
-          <div id="result-container"></div>
-        </section>
-      </main>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-      <div class="loading-content">
-        <div class="spinner"></div>
-        <p class="loading-text">Generant proposta pedagògica...</p>
-        <p class="loading-sub">Consultant marcs teòrics i dissenyant l'activitat</p>
-      </div>
-    </div>
-  </div>
+    <!-- 2. EL TEU CODI PRINCIPAL (Tipus mòdul) -->
+    <script type="module" src="./src/main.js"></script>
 
-  <script type="module" src="./src/main.js"></script>
 </body>
-
 </html>
