@@ -22,7 +22,6 @@ const supabaseClient = typeof supabase !== 'undefined'
 async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
     if (!textUsuari || !apiKeyUsuari || !supabaseClient) return "";
     
-    // Mostrarem a la consola què estem buscant exactament
     console.log(`🔍 RAG: Buscant vector per: "${textUsuari}"`);
 
     try {
@@ -47,7 +46,7 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
         const { data: docs, error } = await supabaseClient.rpc('match_documents', {
             query_embedding: vector,
             match_threshold: 0.4, 
-            match_count: 5 // Agafem els 5 millors fragments per cada cerca
+            match_count: 5 
         });
 
         if (error) throw error;
@@ -88,6 +87,7 @@ const sidebarApiKey = document.getElementById('sidebar-api-key');
 const sidebarApiSave = document.getElementById('sidebar-api-save');
 const sidebarApiTest = document.getElementById('sidebar-api-test');
 const sidebarApiLabel = document.getElementById('sidebar-api-label');
+const sidebarApiHelp = document.getElementById('sidebar-api-help');
 const sidebarProvider = document.getElementById('sidebar-provider');
 const sidebarModel = document.getElementById('sidebar-model');
 
@@ -156,54 +156,35 @@ function setupNavigation() {
     });
 }
 
-// ==========================================
-// 🔥 FUNCIÓ MAGICA: DOBLE RAG (Contingut + Pedagogia)
-// ==========================================
+// --- GENERAR (Handle Generate) ---
 async function handleGenerate(formData) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        alert('❗ Necessites una Clau API per continuar');
+        alert('❗ Necessites una Clau API');
         sidebarApiKey.focus();
         return;
     }
 
-    // 1. Informem l'usuari que estem pensant
     showLoading('Consultant experts...', 'Cercant al currículum i als marcs pedagògics...');
 
     try {
         if (sidebarProvider.value === 'gemini') {
-            
-            // --- CERCA 1: CONTINGUT (Què ensenyar) ---
-            // Ex: "Biologia La cèl·lula 2n ESO"
             const queryContingut = `${formData.materia || ''} ${formData.tema || ''} ${formData.etapa || ''}`;
             const contextContingut = await cercarAlCurriculum(queryContingut, apiKey);
             
-            // --- CERCA 2: PEDAGOGIA (Com ensenyar) ---
-            // Aquí posem les paraules clau dels teus documents PDF/MD
             const queryPedagogia = "principis disseny instruccional fricció cognitiva model 4d rols interacció ia pedagogia ignasiana";
             const contextPedagogic = await cercarAlCurriculum(queryPedagogia, apiKey);
             
-            // --- INJECTEM TOT AL PROMPT ---
             let promptEnriquit = "";
-
-            if (contextContingut) {
-                promptEnriquit += `\n\n[MARC CURRICULAR OFICIAL]:\n${contextContingut}\n`;
-            }
-
-            if (contextPedagogic) {
-                promptEnriquit += `\n\n[PRINCIPIS PEDAGÒGICS I METODOLÒGICS A SEGUIR]:\n${contextPedagogic}\n`;
-            }
+            if (contextContingut) promptEnriquit += `\n\n[MARC CURRICULAR OFICIAL]:\n${contextContingut}\n`;
+            if (contextPedagogic) promptEnriquit += `\n\n[PRINCIPIS PEDAGÒGICS]:\n${contextPedagogic}\n`;
 
             if (promptEnriquit) {
-                // Afegim tot el context al "tema" perquè l'orquestrador ho rebi
                 formData.tema = (formData.tema || '') + promptEnriquit;
-                console.log("📝 RAG Complet: Context injectat correctament.");
             }
         }
 
         loadingText.textContent = 'Generant proposta pedagògica...';
-        
-        // 2. Generació final
         const result = await orchestrate('generate', formData);
         showResult(result);
 
@@ -213,15 +194,55 @@ async function handleGenerate(formData) {
     }
 }
 
+// --- AUDITAR (Handle Audit) - ARA AMB RAG! ---
 async function handleAudit(params) {
-    if (!getApiKey()) return alert('Falta Clau API');
-    showLoading('Auditant...', 'Analitzant qualitat');
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        alert('❗ Necessites una Clau API');
+        sidebarApiKey.focus();
+        return;
+    }
+
+    // 1. Mostrem Loading
+    showLoading('Auditant activitat...', 'Cercant criteris de validació pedagògica...');
+
     try {
+        // 2. Fem el RAG per l'Auditoria també!
+        if (sidebarProvider.value === 'gemini') {
+            // Busquem sobre la matèria per saber si s'adequa
+            const queryContingut = `${params.materia || ''} ${params.etapa || ''}`;
+            const contextContingut = await cercarAlCurriculum(queryContingut, apiKey);
+            
+            // Busquem els CRITERIS D'AVALUACIÓ I QUALITAT (importantíssim per auditar)
+            const queryQualitat = "criteris qualitat pedagògica avaluació competencial disseny universal aprenentatge dua";
+            const contextQualitat = await cercarAlCurriculum(queryQualitat, apiKey);
+            
+            let promptContext = "";
+            if (contextContingut) promptContext += `\n\n[CONTEXT CURRICULAR]:\n${contextContingut}\n`;
+            if (contextQualitat) promptContext += `\n\n[CRITERIS DE QUALITAT I VALIDACIÓ]:\n${contextQualitat}\n`;
+
+            // Injectem aquest context a la descripció o al camp de context perquè l'orquestrador ho vegi
+            if (promptContext) {
+                // Afegim al final del text que l'usuari ha enganxat
+                params.context = (params.context || '') + promptContext;
+                console.log("📝 RAG Auditoria: Context injectat.");
+            }
+        }
+
+        loadingText.textContent = 'Generant informe de millora...';
+        
+        // 3. Cridem l'orquestrador
         const result = await orchestrate('audit', params);
         showResult(result);
+
     } catch (error) {
         hideLoading();
-        alert(`Error: ${error.message}`);
+        // Si falla el JSON, donem un missatge més amable
+        if (error.message.includes('JSON')) {
+            alert("Error de format de la IA. Torna-ho a provar, a vegades la IA s'embolica amb l'estructura.");
+        } else {
+            alert(`Error: ${error.message}`);
+        }
     }
 }
 
@@ -247,10 +268,11 @@ function showResult(result, saveToHistory = true) {
 
     renderResult(resultContainer, result, () => {
         resultSection.classList.add('hidden');
-        if (!saveToHistory) {
-             document.querySelector('[data-mode="history"]').click();
+        // Si venim de generar, tornem a generar. Si venim d'auditar, tornem a auditar.
+        if (result.type === 'audit') {
+            document.querySelector('[data-mode="audit"]').click();
         } else {
-             document.querySelector('[data-mode="generate"]').click();
+            document.querySelector('[data-mode="generate"]').click();
         }
     });
 }
