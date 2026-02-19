@@ -5,50 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CREACTIVIA — Disseny d'Activitats amb IA</title>
     
-    <!-- Estils -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- Icones (Lucide) -->
+    <!-- Icones -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 1. LLIBRERIA SUPABASE (Imprescindible per al RAG) -->
+    <!-- 1. LLIBRERIA SUPABASE (L'únic que afegim al head) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
     <div class="app-container">
-        <!-- Sidebar: Configuració -->
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">CREACTIVIA</h1>
                 <p class="tagline">IA per a docents</p>
             </div>
 
-            <div class="sidebar-section">
-                <label id="sidebar-api-label" class="section-label">
-                    <i data-lucide="key"></i> Clau API
-                </label>
-                <div class="api-input-group">
-                    <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
-                    <button id="sidebar-api-save" title="Desar Clau"><i data-lucide="save"></i></button>
-                    <button id="sidebar-api-test" title="Provar Connexió"><i data-lucide="zap"></i></button>
+            <div class="sidebar-settings">
+                <div class="sidebar-section">
+                    <label id="sidebar-api-label" class="section-label">
+                        <i data-lucide="key"></i> Google Key
+                    </label>
+                    <div class="api-input-group">
+                        <input type="password" id="sidebar-api-key" placeholder="AIzaSy...">
+                        <button id="sidebar-api-save" class="icon-btn" title="Desar"><i data-lucide="save"></i></button>
+                        <button id="sidebar-api-test" class="icon-btn" title="Provar"><i data-lucide="zap"></i></button>
+                    </div>
+                    <small id="sidebar-api-help" class="help-text"></small>
                 </div>
-                <small id="sidebar-api-help" class="help-text"></small>
-            </div>
 
-            <div class="sidebar-section">
-                <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
-                <select id="sidebar-provider">
-                    <option value="gemini">Google Gemini</option>
-                    <option value="openrouter">OpenRouter</option>
-                </select>
-            </div>
+                <div class="sidebar-section">
+                    <label class="section-label"><i data-lucide="cpu"></i> Proveïdor</label>
+                    <select id="sidebar-provider" class="sidebar-select">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openrouter">OpenRouter</option>
+                    </select>
+                </div>
 
-            <div class="sidebar-section">
-                <label class="section-label"><i data-lucide="layers"></i> Model</label>
-                <select id="sidebar-model">
-                    <!-- Es prioritza via JS -->
-                </select>
+                <div class="sidebar-section">
+                    <label class="section-label"><i data-lucide="layers"></i> Model</label>
+                    <select id="sidebar-model" class="sidebar-select"></select>
+                </div>
             </div>
 
             <nav class="main-nav">
@@ -64,40 +63,26 @@
             </nav>
         </aside>
 
-        <!-- Contingut Principal -->
+        <!-- Main Content -->
         <main class="main-content">
-            
-            <!-- SECCIÓ: GENERAR -->
             <section id="generate-section" class="section active">
-                <div id="wizard-container">
-                    <!-- El formulari es renderitza via JS (renderGeneratorForm) -->
-                </div>
+                <div id="wizard-container"></div>
             </section>
 
-            <!-- SECCIÓ: AUDITAR -->
             <section id="audit-section" class="section">
-                <div id="auditor-container">
-                    <!-- Es renderitza via JS -->
-                </div>
+                <div id="auditor-container"></div>
             </section>
 
-            <!-- SECCIÓ: HISTORIAL -->
             <section id="history-section" class="section">
-                <div id="history-container">
-                    <!-- Es renderitza via JS -->
-                </div>
+                <div id="history-container"></div>
             </section>
 
-            <!-- SECCIÓ: RESULTAT (Amagada per defecte) -->
             <section id="result-section" class="section hidden">
-                <div id="result-container">
-                    <!-- Es renderitza via JS (renderResult) -->
-                </div>
+                <div id="result-container"></div>
             </section>
-
         </main>
 
-        <!-- Loading Overlay (Pantalla de càrrega) -->
+        <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay hidden">
             <div class="loading-content">
                 <div class="spinner"></div>
@@ -107,7 +92,7 @@
         </div>
     </div>
 
-    <!-- 2. EL TEU CODI PRINCIPAL (Tipus mòdul) -->
+    <!-- 2. EL TEU SCRIPT (Al final de tot) -->
     <script type="module" src="./src/main.js"></script>
 
 </body>
