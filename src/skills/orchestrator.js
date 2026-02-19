@@ -15,10 +15,13 @@ async function runGenerate(params) {
     // CRIDA 1: Genera l'activitat completa
     console.log('🎯 [1/2] Generant activitat...');
     const activity = await generateActivity(params);
-    if (activity.error) throw new Error(activity.error);
+    
+    if (!activity || activity.error) {
+        throw new Error(activity?.error || "Error generant l'activitat inicial.");
+    }
 
     // Pausa entre crides per respectar rate limit
-    await delay(3000);
+    await delay(2000);
 
     // CRIDA 2: Auditoria pedagògica de l'activitat generada
     console.log('🔍 [2/2] Auditant qualitat pedagògica...');
@@ -35,36 +38,41 @@ async function runGenerate(params) {
 
   } catch (error) {
     console.error('[Orchestrator] Error en generació:', error);
-    return {
-      mode: 'generate',
-      activity: null,
-      audit: null,
-      error: error.message,
-      timestamp: Date.now(),
-      modelUsed: CONFIG.MODEL,
-      inputParams: { ...params }
-    };
+    return { error: error.message };
   }
 }
 
-// ─── MODE AUDITA: 2 crides LLM ─────────────────────────────────────────────
+// ─── MODE AUDITA: 2 crides LLM (CORREGIT) ──────────────────────────────────
 async function runAudit(params) {
   try {
+    // 1. Validem que hi hagi text per auditar
+    // L'usuari escriu a 'activityDescription' (al formulari d'auditoria)
+    const textToAudit = params.activityDescription || params.activityText || "";
+    
+    if (!textToAudit) {
+        throw new Error("No s'ha introduït cap activitat per auditar.");
+    }
+
     // CRIDA 1: Auditoria de l'activitat existent
     console.log('🔍 [1/2] Auditant activitat...');
-    const audit = await auditActivity(params);
-    if (audit.error) throw new Error(audit.error);
+    const audit = await auditActivity({ ...params, activityText: textToAudit });
+    
+    if (!audit || audit.error) {
+        throw new Error(audit?.error || "Error durant l'anàlisi de l'activitat.");
+    }
 
     await delay(3000);
 
     // CRIDA 2: Generar versió millorada
     console.log('🎯 [2/2] Generant versió millorada...');
-    const improvedActivity = await generateImprovedActivity(params.activityText, audit, params);
+    
+    // Passem el text original + l'auditoria feta + el context extra (RAG)
+    const improvedActivity = await generateImprovedActivity(textToAudit, audit, params);
 
     return {
       mode: 'audit',
-      activity: improvedActivity,
-      audit,
+      activity: improvedActivity, // Això serà la "Nova Proposta"
+      audit: audit,               // Això serà l'anàlisi crític
       timestamp: Date.now(),
       modelUsed: CONFIG.MODEL,
       inputParams: { ...params }
@@ -72,15 +80,7 @@ async function runAudit(params) {
 
   } catch (error) {
     console.error('[Orchestrator] Error en auditoria:', error);
-    return {
-      mode: 'audit',
-      activity: null,
-      audit: null,
-      error: error.message,
-      timestamp: Date.now(),
-      modelUsed: CONFIG.MODEL,
-      inputParams: { ...params }
-    };
+    return { error: error.message };
   }
 }
 
