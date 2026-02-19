@@ -1,4 +1,4 @@
-// 1. PRIMER ELS IMPORTS (A DALT DE TOT, SENSE EXCEPCIÓ)
+// 1. PRIMER ELS IMPORTS (A dalt de tot, sense res a sobre)
 import { getApiKey, setApiKey, getModel, setModel, getAvailableModels, setProvider, CONFIG } from './config.js';
 import { testConnection } from './api/llm-provider.js';
 import { orchestrate } from './skills/orchestrator.js';
@@ -8,23 +8,21 @@ import { renderResult } from './ui/result-view.js';
 import { addToHistory } from './utils/history.js';
 import { renderHistoryView } from './ui/history-view.js';
 
-// 2. CONFIGURACIÓ SUPABASE RAG
+// 2. CONFIGURACIÓ SUPABASE
 const SUPABASE_URL = 'https://qlftykfqjwaxucoeqcjv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZnR5a2ZxandheHVjb2VxY2p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MjkxNjQsImV4cCI6MjA4NzAwNTE2NH0.m1NyE3ViywXKBNEWkh1nrwnhToiH8Y26HGY8GT5-f_8';
 
-// Inicialitzem el client de Supabase
-// (Es carrega des del script de l'index.html)
+// Inicialitzem el client de Supabase si la llibreria està carregada a l'index.html
 const supabaseClient = typeof supabase !== 'undefined' 
     ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
     : null;
 
-// Funció que busca informació rellevant al currículum a Supabase
+// Funció per cercar coneixement al currículum (RAG)
 async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
     if (!textUsuari || !apiKeyUsuari || !supabaseClient) return "";
     console.log("🔍 Buscant al currículum per:", textUsuari);
 
     try {
-        // A. Convertim la petició de l'usuari en un vector (Embedding) usant la seva clau
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKeyUsuari}`,
             {
@@ -43,7 +41,6 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
         const data = await response.json();
         const vectorUsuari = data.embedding.values;
 
-        // B. Cridem a la funció SQL de Supabase per trobar fragments similars
         const { data: documents, error } = await supabaseClient.rpc('match_documents', {
             query_embedding: vectorUsuari,
             match_threshold: 0.4, 
@@ -56,8 +53,6 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
             console.log(`✅ Trobats ${documents.length} fragments de context.`);
             return documents.map(d => d.content).join("\n\n---\n\n");
         }
-        
-        console.log("⚠️ No s'ha trobat context específic.");
         return "";
     } catch (err) {
         console.error("Error en RAG:", err);
@@ -82,7 +77,7 @@ const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.querySelector('.loading-text');
 const loadingSub = document.querySelector('.loading-sub');
 
-// Sidebar Settings
+// Sidebar Elements
 const sidebarApiKey = document.getElementById('sidebar-api-key');
 const sidebarApiSave = document.getElementById('sidebar-api-save');
 const sidebarApiTest = document.getElementById('sidebar-api-test');
@@ -98,6 +93,7 @@ function init() {
     renderGeneratorForm(wizardContainer, handleGenerate);
     renderAuditorForm(auditorContainer, handleAudit);
 
+    // Dibuixa les icones de Lucide
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -125,15 +121,8 @@ function setupSidebarSettings() {
     const populateModels = () => {
         const models = getAvailableModels();
         const currentModel = getModel();
-        const isKnown = models.some(m => m.id === currentModel);
-        const displayModels = [...models];
-        if (!isKnown && currentModel && currentModel !== 'custom') {
-            displayModels.push({ id: currentModel, name: `Personalitzat (${currentModel})` });
-        }
-        sidebarModel.innerHTML = displayModels.map(m => `
-            <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>
-                ${m.name}
-            </option>
+        sidebarModel.innerHTML = models.map(m => `
+            <option value="${m.id}" ${m.id === currentModel ? 'selected' : ''}>${m.name}</option>
         `).join('');
     };
 
@@ -151,34 +140,23 @@ function setupSidebarSettings() {
     sidebarApiTest.addEventListener('click', async () => {
         const key = sidebarApiKey.value.trim();
         const provider = sidebarProvider.value;
-        if (!key) {
-            showSuccess('❗ Introdueix una clau primer');
-            return;
-        }
-        sidebarApiTest.classList.add('loading');
+        if (!key) { showSuccess('❗ Introdueix clau'); return; }
+        
         sidebarApiTest.innerHTML = '<i data-lucide="loader-2"></i>';
+        if (window.lucide) window.lucide.createIcons();
+        
         try {
             const result = await testConnection(provider, key);
-            sidebarApiTest.classList.remove('loading');
             if (result.ok) {
-                sidebarApiTest.classList.add('success');
-                sidebarApiTest.innerHTML = '<i data-lucide="check"></i>';
                 showSuccess('✅ Connexió correcta!');
             } else {
-                sidebarApiTest.classList.add('error');
-                sidebarApiTest.innerHTML = '<i data-lucide="x"></i>';
                 alert(`Error: ${result.message}`);
             }
         } catch (err) {
-            sidebarApiTest.classList.remove('loading', 'error');
             alert(`Error: ${err.message}`);
         }
+        sidebarApiTest.innerHTML = '<i data-lucide="zap"></i>';
         if (window.lucide) window.lucide.createIcons();
-        setTimeout(() => {
-            sidebarApiTest.classList.remove('success', 'error');
-            sidebarApiTest.innerHTML = '<i data-lucide="zap"></i>';
-            if (window.lucide) window.lucide.createIcons();
-        }, 3000);
     });
 
     sidebarProvider.addEventListener('change', () => {
@@ -194,10 +172,11 @@ function setupSidebarSettings() {
 
 function showSuccess(msg) {
     const toast = document.createElement('div');
-    toast.style.cssText = `position: fixed; bottom: 20px; left: 20px; background: var(--c-primary); color: white; padding: 10px 20px; border-radius: var(--r-md); font-size: 12px; font-weight: 700; z-index: 1000; box-shadow: var(--shadow-lg);`;
+    toast.className = 'toast-success'; // Assegura't de tenir estils per això o usa el style.css
+    toast.style.cssText = "position:fixed; bottom:20px; left:20px; background:#4f46e5; color:white; padding:10px 20px; border-radius:8px; z-index:1000;";
     toast.textContent = msg;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2300);
+    setTimeout(() => toast.remove(), 2500);
 }
 
 function setupNavigation() {
@@ -216,38 +195,28 @@ function switchMode(mode) {
     if (mode === 'history') renderHistoryView(historyContainer, (item) => showResult(item, false));
 }
 
-// --- HANDLER GENERATE AMB RAG INTEGRAT ---
+// --- GENERAR AMB RAG ---
 async function handleGenerate(formData) {
     const apiKey = getApiKey();
     if (!apiKey) {
-        showSuccess('❗ Necessites una Clau API');
+        showSuccess('❗ Falta Clau API');
         sidebarApiKey.focus();
         return;
     }
 
-    showLoading('Analitzant currículum...', 'Buscant marcs teòrics i sabers a Supabase');
+    showLoading('Consultant currículum...', 'Buscant marcs teòrics a Supabase');
 
     try {
-        // 1. Busquem context al currículum (RAG)
         const queryRAG = `${formData.materia || ''} ${formData.tema || ''} ${formData.etapa || ''}`;
-        const contextCurricular = await cercarAlCurriculum(queryRAG, apiKey);
+        const context = await cercarAlCurriculum(queryRAG, apiKey);
 
-        // 2. Si hi ha context, l'injectem al formulari abans d'enviar a l'orquestrador
-        if (contextCurricular) {
-            console.log("📝 Injectant context oficial al prompt...");
-            formData.contextOficial = contextCurricular; 
-            // Nota: L'orquestrador ha de saber llegir formData.contextOficial 
-            // O pots concatenar-lo al tema:
-            formData.tema = (formData.tema || '') + `\n\n[CONTEXT CURRICULAR OFICIAL]:\n${contextCurricular}`;
+        if (context) {
+            formData.tema = (formData.tema || '') + `\n\n[CONTEXT CURRICULAR OFICIAL]:\n${context}`;
         }
 
-        loadingText.textContent = 'Generant proposta pedagògica...';
-        loadingSub.textContent = 'Dissenyant l\'activitat amb IA';
-
-        // 3. Executem la generació normal
+        loadingText.textContent = 'Generant proposta...';
         const result = await orchestrate('generate', formData);
         showResult(result);
-
     } catch (error) {
         hideLoading();
         alert(`Error: ${error.message}`);
@@ -255,12 +224,8 @@ async function handleGenerate(formData) {
 }
 
 async function handleAudit(params) {
-    if (!getApiKey()) {
-        showSuccess('❗ Necessites una Clau API');
-        sidebarApiKey.focus();
-        return;
-    }
-    showLoading('Auditant l\'activitat...', 'Analitzant criteris de qualitat');
+    if (!getApiKey()) return;
+    showLoading('Auditant...', 'Analitzant criteris de qualitat');
     try {
         const result = await orchestrate('audit', params);
         showResult(result);
@@ -282,18 +247,18 @@ function hideLoading() {
 
 function showResult(result, saveToHistory = true) {
     hideLoading();
-    if (saveToHistory && !result.error) {
-        const savedItem = addToHistory(result);
-        if (savedItem) result.id = savedItem.id;
-    }
+    if (saveToHistory && !result.error) addToHistory(result);
+    
     generateSection.classList.remove('active');
     auditSection.classList.remove('active');
     historySection.classList.remove('active');
     resultSection.classList.remove('hidden');
+    
     renderResult(resultContainer, result, () => {
         resultSection.classList.add('hidden');
         saveToHistory ? switchMode(currentMode) : switchMode('history');
     });
 }
 
+// ARRENCADA DE L'APP
 init();
