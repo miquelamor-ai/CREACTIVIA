@@ -1,4 +1,4 @@
-// 1. IMPORTS (Sempre a dalt de tot)
+// 1. IMPORTS
 import { getApiKey, setApiKey, getModel, setModel, getAvailableModels, setProvider, CONFIG } from './config.js';
 import { testConnection } from './api/llm-provider.js';
 import { orchestrate } from './skills/orchestrator.js';
@@ -14,18 +14,18 @@ import { renderHistoryView } from './ui/history-view.js';
 const SUPABASE_URL = 'https://qlftykfqjwaxucoeqcjv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZnR5a2ZxandheHVjb2VxY2p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MjkxNjQsImV4cCI6MjA4NzAwNTE2NH0.m1NyE3ViywXKBNEWkh1nrwnhToiH8Y26HGY8GT5-f_8';
 
-// Inicialitzem el client de forma segura
 const supabaseClient = typeof supabase !== 'undefined' 
     ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) 
     : null;
 
-// Funció per cercar al currículum
+// Funció de cerca (RAG)
 async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
     if (!textUsuari || !apiKeyUsuari || !supabaseClient) return "";
-    console.log("🔍 RAG: Buscant al currículum per:", textUsuari);
+    
+    // Mostrarem a la consola què estem buscant exactament
+    console.log(`🔍 RAG: Buscant vector per: "${textUsuari}"`);
 
     try {
-        // A. Embedding amb Google
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKeyUsuari}`,
             {
@@ -39,22 +39,21 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
             }
         );
         
-        if (!response.ok) return ""; // Si falla Google, continuem sense RAG
+        if (!response.ok) return ""; 
         
         const data = await response.json();
         const vector = data.embedding.values;
 
-        // B. Cerca a Supabase
         const { data: docs, error } = await supabaseClient.rpc('match_documents', {
             query_embedding: vector,
             match_threshold: 0.4, 
-            match_count: 5
+            match_count: 5 // Agafem els 5 millors fragments per cada cerca
         });
 
         if (error) throw error;
 
         if (docs && docs.length > 0) {
-            console.log(`✅ RAG: Trobats ${docs.length} fragments.`);
+            console.log(`✅ RAG: Trobats ${docs.length} fragments rellevants.`);
             return docs.map(d => d.content).join("\n\n---\n\n");
         }
         return "";
@@ -65,7 +64,7 @@ async function cercarAlCurriculum(textUsuari, apiKeyUsuari) {
 }
 
 // ==========================================
-// 3. CODI PRINCIPAL DE L'APP
+// 3. ESTRUCTURA APP
 // ==========================================
 
 let currentMode = 'generate';
@@ -89,7 +88,6 @@ const sidebarApiKey = document.getElementById('sidebar-api-key');
 const sidebarApiSave = document.getElementById('sidebar-api-save');
 const sidebarApiTest = document.getElementById('sidebar-api-test');
 const sidebarApiLabel = document.getElementById('sidebar-api-label');
-const sidebarApiHelp = document.getElementById('sidebar-api-help');
 const sidebarProvider = document.getElementById('sidebar-provider');
 const sidebarModel = document.getElementById('sidebar-model');
 
@@ -99,20 +97,15 @@ function init() {
     setupNavigation();
     renderGeneratorForm(wizardContainer, handleGenerate);
     renderAuditorForm(auditorContainer, handleAudit);
-    
-    // Icones Lucide
     if (window.lucide) window.lucide.createIcons();
 }
 
-// Sidebar Logic
 function setupSidebarSettings() {
     sidebarProvider.value = CONFIG.PROVIDER;
-
     const updateUI = () => {
         const provider = sidebarProvider.value;
         const key = getApiKey();
         sidebarApiKey.value = key || '';
-
         if (provider === 'gemini') {
             sidebarApiLabel.innerHTML = '<i data-lucide="key"></i> Google Key';
             sidebarApiKey.placeholder = 'AIzaSy...';
@@ -122,7 +115,6 @@ function setupSidebarSettings() {
         }
         if (window.lucide) window.lucide.createIcons();
     };
-
     const populateModels = () => {
         const models = getAvailableModels();
         const curr = getModel();
@@ -130,58 +122,43 @@ function setupSidebarSettings() {
             <option value="${m.id}" ${m.id === curr ? 'selected' : ''}>${m.name}</option>
         `).join('');
     };
-
     updateUI();
     populateModels();
-
     sidebarApiSave.addEventListener('click', () => {
         const newKey = sidebarApiKey.value.trim();
         if (newKey) { setApiKey(newKey); alert('Clau desada correctament!'); }
     });
-
     sidebarApiTest.addEventListener('click', async () => {
         const key = sidebarApiKey.value.trim();
         const provider = sidebarProvider.value;
         if (!key) return alert('Introdueix una clau primer');
-        
         try {
             const result = await testConnection(provider, key);
             alert(result.ok ? '✅ Connexió correcta!' : `❌ Error: ${result.message}`);
-        } catch (err) {
-            alert(`Error: ${err.message}`);
-        }
+        } catch (err) { alert(`Error: ${err.message}`); }
     });
-
-    sidebarProvider.addEventListener('change', () => {
-        setProvider(sidebarProvider.value);
-        updateUI();
-        populateModels();
-    });
-
+    sidebarProvider.addEventListener('change', () => { setProvider(sidebarProvider.value); updateUI(); populateModels(); });
     sidebarModel.addEventListener('change', () => setModel(sidebarModel.value));
 }
 
-// Navigation Logic
 function setupNavigation() {
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             const mode = item.dataset.mode;
             currentMode = mode;
-            
             navItems.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
             generateSection.classList.toggle('active', mode === 'generate');
             auditSection.classList.toggle('active', mode === 'audit');
             historySection.classList.toggle('active', mode === 'history');
             resultSection.classList.add('hidden');
-
-            if (mode === 'history') {
-                renderHistoryView(historyContainer, (item) => showResult(item, false));
-            }
+            if (mode === 'history') renderHistoryView(historyContainer, (item) => showResult(item, false));
         });
     });
 }
 
-// --- GENERAR AMB RAG INTEGRAT ---
+// ==========================================
+// 🔥 FUNCIÓ MAGICA: DOBLE RAG (Contingut + Pedagogia)
+// ==========================================
 async function handleGenerate(formData) {
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -190,23 +167,43 @@ async function handleGenerate(formData) {
         return;
     }
 
-    showLoading('Consultant currículum...', 'Cercant sabers a la base de dades');
+    // 1. Informem l'usuari que estem pensant
+    showLoading('Consultant experts...', 'Cercant al currículum i als marcs pedagògics...');
 
     try {
-        // 1. Intentem buscar context si el proveïdor és Gemini
         if (sidebarProvider.value === 'gemini') {
-            const query = `${formData.materia || ''} ${formData.tema || ''} ${formData.etapa || ''}`;
-            const context = await cercarAlCurriculum(query, apiKey);
             
-            if (context) {
-                // Afegim el context al tema de forma invisible per l'usuari però visible per la IA
-                formData.tema = (formData.tema || '') + `\n\n[CONTEXT CURRICULAR OFICIAL DE CATALUNYA]:\n${context}\n\n`;
+            // --- CERCA 1: CONTINGUT (Què ensenyar) ---
+            // Ex: "Biologia La cèl·lula 2n ESO"
+            const queryContingut = `${formData.materia || ''} ${formData.tema || ''} ${formData.etapa || ''}`;
+            const contextContingut = await cercarAlCurriculum(queryContingut, apiKey);
+            
+            // --- CERCA 2: PEDAGOGIA (Com ensenyar) ---
+            // Aquí posem les paraules clau dels teus documents PDF/MD
+            const queryPedagogia = "principis disseny instruccional fricció cognitiva model 4d rols interacció ia pedagogia ignasiana";
+            const contextPedagogic = await cercarAlCurriculum(queryPedagogia, apiKey);
+            
+            // --- INJECTEM TOT AL PROMPT ---
+            let promptEnriquit = "";
+
+            if (contextContingut) {
+                promptEnriquit += `\n\n[MARC CURRICULAR OFICIAL]:\n${contextContingut}\n`;
+            }
+
+            if (contextPedagogic) {
+                promptEnriquit += `\n\n[PRINCIPIS PEDAGÒGICS I METODOLÒGICS A SEGUIR]:\n${contextPedagogic}\n`;
+            }
+
+            if (promptEnriquit) {
+                // Afegim tot el context al "tema" perquè l'orquestrador ho rebi
+                formData.tema = (formData.tema || '') + promptEnriquit;
+                console.log("📝 RAG Complet: Context injectat correctament.");
             }
         }
 
         loadingText.textContent = 'Generant proposta pedagògica...';
         
-        // 2. Generació normal
+        // 2. Generació final
         const result = await orchestrate('generate', formData);
         showResult(result);
 
@@ -258,5 +255,5 @@ function showResult(result, saveToHistory = true) {
     });
 }
 
-// Iniciem l'aplicació
+// Inici
 init();
