@@ -158,43 +158,51 @@ Audita la qualitat pedagògica d'aquesta activitat de forma crítica i construct
   return normalizeResult(result, 'auditoria');
 }
 
-// ─── GENERATE IMPROVED (per auditoria externa) ─────────────────────────────
+// ─── GENERATE IMPROVED (Aquí estava el problema: ara usa el format complet) ──
 export async function generateImprovedActivity(originalText, auditResults, params = {}) {
-  const knowledge = await loadSpecificKnowledge(['friccio', 'mihia', 'rols', 'disseny']);
+  let knowledge = "";
+  try { knowledge = await loadSpecificKnowledge(['friccio', 'mihia', 'rols', 'disseny']); } catch(e) {}
+
+  // AQUI RECUPEREM EL CONTEXT DEL RAG SI EXISTEIX
+  // 'params.context' o el que ve del formulari d'auditoria
+  const contextRAG = params.context || params.activityDescription || "";
 
   const prompt = `Ets CREACTIVITAT, expert en redisseny pedagògic.
-Reescriu l'activitat original aplicant les millores de l'auditoria.
+LA TEVA MISSIÓ: Reescriure completament l'activitat original aplicant les millores detectades a l'auditoria i els principis pedagògics.
 
-=== CONTEXT PEDAGÒGIC ===
+=== CONTEXT PEDAGÒGIC I RAG (MOLT IMPORTANT) ===
 ${knowledge}
+${contextRAG}
 
 === ACTIVITAT ORIGINAL ===
 ${originalText}
 
-=== INFORME D'AUDITORIA ===
+=== INFORME D'AUDITORIA (Millores a aplicar) ===
 ${JSON.stringify(auditResults, null, 2)}
 
-=== FORMAT (JSON estricte, igual que l'activitat original) ===
-Retorna el JSON complet de l'activitat millorada amb el mateix format que generateActivity.
-No incloguis text fora del JSON.`;
+=== INSTRUCCIÓ DE REDISSENY ===
+Genera una NOVA versió de l'activitat que solucioni les febleses detectades.
+Has de mantenir TOTA la riquesa del format original (fases, rols, negretes, metadades, competències 4D).
+No facis un resum, fes l'activitat completa de nou.
+
+${INSTRUCCIONS_EXPERTES}`; // <--- AQUI REUTILITZEM EL TEU PROMPT MESTRE ORIGINAL
 
   const result = await callLLM(prompt, { temperature: 0.7 });
-  return normalizeResult(result, 'activitat');
+  return normalizeResult(result, 'activitat_millorada');
 }
 
-// ─── MANTENIM COMPATIBILITAT AMB NOMS ANTICS ───────────────────────────────
+// ─── MANTENIM COMPATIBILITAT ───────────────────────────────────────────────
 export async function generateSkeleton(params) {
   return generateActivity(params);
 }
 
 export async function enrichWithPedagogy(draft) {
-  // Ja no cal pas separat, retornem el draft
   return draft;
 }
 
 export async function finalizeActivity(draft) {
   if (!draft || !draft.titol || !draft.sequencia) {
-    throw new Error("L'activitat generada és incompleta. Torna-ho a provar.");
+   throw new Error("L'activitat generada és incompleta. Torna-ho a provar.");
   }
   if (!draft.inclusio) draft.inclusio = { dua_aplicat: 'Suport general', adaptacions: 'Flexible' };
   if (!draft.reflexio_ppi) draft.reflexio_ppi = { moment: 'Final', pregunta: 'Què has après avui?' };
