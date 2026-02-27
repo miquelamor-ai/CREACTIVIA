@@ -47,7 +47,7 @@ async function runAudit(params) {
   try {
     // 1. Validem que hi hagi text per auditar
     // L'usuari escriu a 'activityDescription' (al formulari d'auditoria)
-    const textToAudit = params.activityDescription || params.activityText || "";
+    const textToAudit = params.activityText || params.activityDescription || "";
     
     if (!textToAudit) {
         throw new Error("No s'ha introduït cap activitat per auditar.");
