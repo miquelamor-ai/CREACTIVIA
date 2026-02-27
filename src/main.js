@@ -258,6 +258,8 @@ async function handleAudit(params) {
         if (sidebarProvider.value === 'gemini') {
             
             // A. Context de la matèria (per saber si és adequada)
+                console.log('🔍 DEBUG handleAudit - Inici');
+    console.log('📋 Params rebuts:', JSON.stringify(params, null, 2));
             const queryContingut = `${params.subject || ''} ${params.stage || ''} currículum oficial`;
             const contextMateria = await cercarAlCurriculum(queryContingut, apiKey);
             
@@ -295,12 +297,24 @@ async function handleAudit(params) {
         loadingText.textContent = 'Generant la proposta millorada...';
         
         // 3. Cridem l'orquestrador
+                console.log('⚙️ Crida orchestrate amb:');
+        console.log('  - activityText:', params.activityText?.substring(0, 100) + '...');
+        console.log('  - stage:', params.stage);
+        console.log('  - subject:', params.subject);
+        console.log('  - ragContext length:', params.ragContext?.length);
         const result = await orchestrate('audit', {
             activityText: params.activityText,
             stage: params.stage,
             subject: params.subject,
             ragContext: params.ragContext
         });
+
+                console.log('✅ Resultat rebut de orchestrate:');
+        console.log('  - result.type:', result?.type);
+        console.log('  - result.analysis:', !!result?.analysis);
+        console.log('  - result.improvedActivity:', !!result?.improvedActivity);
+        console.log('  - result.improvedProposal:', !!result?.improvedProposal);
+        console.log('  - result.error:', result?.error);
         
         if (!result || result.error) {
             throw new Error(result?.error || "La IA no ha retornat cap resultat.");
@@ -311,6 +325,7 @@ async function handleAudit(params) {
             console.warn("⚠️ Alerta: La IA ha fet l'auditoria però no ha retornat la millora.");
         }
 
+                console.log('🎉 Cridant showResult amb el resultat final.');
         showResult(result);
 
     } catch (error) {
