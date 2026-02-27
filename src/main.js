@@ -295,7 +295,12 @@ async function handleAudit(params) {
         loadingText.textContent = 'Generant la proposta millorada...';
         
         // 3. Cridem l'orquestrador
-        const result = await orchestrate('audit', params);
+        const result = await orchestrate('audit', {
+            activityText: params.activityText,
+            stage: params.stage,
+            subject: params.subject,
+            ragContext: params.ragContext
+        });
         
         if (!result || result.error) {
             throw new Error(result?.error || "La IA no ha retornat cap resultat.");
