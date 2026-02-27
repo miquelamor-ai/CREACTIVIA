@@ -1,4 +1,6 @@
 // CREACTIVITAT — Result View UI
+import { generateMarkdown } from '../utils/markdown-generator.js';
+import { generateMarkdown } from '../utils/markdown-generator.js';
 
 export function renderResult(container, result, onBack) {
   const { mode, activity, audit, error } = result;
@@ -40,6 +42,7 @@ export function renderResult(container, result, onBack) {
       <div class="result-actions">
         <button class="btn btn-secondary btn-sm" id="btn-copy" title="Copia"><i data-lucide="copy"></i> Copia</button>
         <button class="btn btn-secondary btn-sm" id="btn-download" title="Descarrega"><i data-lucide="download"></i> JSON</button>
+            <button class="btn btn-secondary btn-sm" id="btn-download-md" title="Descarrega Markdown"><i data-lucide="download"></i> Markdown</button>
       </div>
     </div>
     
@@ -72,6 +75,22 @@ export function renderResult(container, result, onBack) {
       a.click();
       URL.revokeObjectURL(url);
     });
+
+  // Markdown Download Handler
+  const dlBtnMd = container.querySelector('#btn-download-md');
+  
+  if (dlBtnMd) {
+    dlBtnMd.addEventListener('click', () => {
+      const markdown = generateMarkdown(result, mode, activity);
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `creactivitat-${mode}-${new Date().toISOString().slice(0, 10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
   }
 
   // Accordion toggles
