@@ -258,7 +258,7 @@ async function handleAudit(params) {
         if (sidebarProvider.value === 'gemini') {
             
             // A. Context de la matèria (per saber si és adequada)
-            const queryContingut = `${params.materia || ''} ${params.etapa || ''} currículum oficial`;
+            const queryContingut = `${params.subject || ''} ${params.stage || ''} currículum oficial`;
             const contextMateria = await cercarAlCurriculum(queryContingut, apiKey);
             
             // B. Context PEDAGÒGIC COMPLET (Tots els teus documents)
@@ -286,7 +286,9 @@ async function handleAudit(params) {
         `;
 
         // Injectem tot això dins del paràmetre que l'orquestrador envia a la IA
-        params.activityDescription = (params.activityDescription || '') + instruccioFinal;
+        // Preserva el text de l'usuari separat del context RAG
+        params.activityText = params.activityText || "";  // ja ve del formulari
+        params.ragContext = instruccioFinal;               // nou camp per al context
 
         console.log("📝 RAG Auditoria: Context complet (DUA + Inclusió + Pedagogia) injectat.");
 
