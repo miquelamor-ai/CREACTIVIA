@@ -1,7 +1,5 @@
 // CREACTIVITAT — Result View UI
 import { generateMarkdown } from '../utils/markdown-generator.js';
-import { generateMarkdown } from '../utils/markdown-generator.js';
-
 export function renderResult(container, result, onBack) {
   const { mode, activity, audit, error } = result;
 
